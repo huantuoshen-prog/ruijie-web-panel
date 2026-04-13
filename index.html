@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>锐捷认证 · Web 管理面板</title>
+<script>!function(){try{var t=localStorage.getItem('theme');if(t===''&&window.matchMedia('(prefers-color-scheme:dark)').matches||t==='dark')document.documentElement.setAttribute('data-theme','dark');else if(t==='light')document.documentElement.removeAttribute('data-theme')}catch(e){}}();</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --fl-primary:#0078D4;--fl-primary-hover:#106EBE;--fl-primary-press:#005A9E;
+  --fl-green:#107C10;--fl-green-bg:#f0faf0;
+  --fl-red:#d13438;--fl-red-bg:#fdf3f4;
+  --bg:#ebebeb;
+  --surface:rgba(255,255,255,.82);
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,.08);
+  --shadow:0 2px 8px rgba(0,0,0,.07),0 0 0 1px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.10),0 0 0 1px rgba(0,0,0,.04);
+  --r:10px;--r-sm:7px;--r-lg:14px;
+  --font:'Segoe UI Variable','Segoe UI','Microsoft YaHei',system-ui,sans-serif;
+  --font-mono:Consolas,'Microsoft YaHei',monospace;
+  --t-xs:13px;--t-sm:14px;--t-base:17px;--t-lg:19px;--t-xl:24px;
+  --field-bg:rgba(255,255,255,.7);--field-border:rgba(0,0,0,.12);
+  --btn-s-bg:rgba(255,255,255,.7);--btn-s-border:rgba(0,0,0,.12);
+  --log-chip-bg:rgba(255,255,255,.7);--log-chip-border:rgba(0,0,0,.12);
+  --about-bg:rgba(255,255,255,.70);
+  --log-area-bg:rgba(255,255,255,.75);
+  --mini-stat-bg:rgba(255,255,255,.75);
+  --toast-bg:rgba(255,255,255,.96);
+  --banner-bg:rgba(209,52,56,.06);
+  --header-bg:rgba(255,255,255,.88);
+  --log-l-OK-bg:rgba(16,124,16,.12);--log-l-OK-color:#0b6a0b;
+  --log-l-INFO-bg:rgba(0,120,212,.1);--log-l-INFO-color:#005a9e;
+  --log-l-STEP-bg:rgba(0,120,212,.07);--log-l-STEP-color:#005a9e;
+  --log-l-WARN-bg:rgba(202,80,16,.12);--log-l-WARN-color:#a4262c;
+  --log-l-ERROR-bg:rgba(209,52,56,.1);--log-l-ERROR-color:#a4262c;
+  --bg-image:none;
+}
+html{font-family:var(--font);font-size:var(--t-base);color:var(--text);-webkit-font-smoothing:antialiased}
+body{
+  min-height:100vh;
+  background:var(--bg) var(--bg-image) center/cover no-repeat fixed;
+  transition:background .25s,color .2s;
+}
+
+/* ===== DARK MODE ===== */
+[data-theme="dark"]{
+  --bg:#0e0e0e;--surface:rgba(30,30,30,.85);--text:#e4e4e4;--text2:#a0a0a0;--text3:#606060;
+  --border:rgba(255,255,255,.07);
+  --shadow:0 2px 8px rgba(0,0,0,.50),0 0 0 1px rgba(255,255,255,.03);
+  --shadow-md:0 4px 16px rgba(0,0,0,.60),0 0 0 1px rgba(255,255,255,.03);
+  --fl-green-bg:rgba(26,42,26,.9);--fl-red-bg:rgba(42,26,26,.9);
+  --field-bg:rgba(38,38,38,.80);--field-border:rgba(255,255,255,.10);
+  --btn-s-bg:rgba(38,38,38,.80);--btn-s-border:rgba(255,255,255,.10);
+  --log-chip-bg:rgba(38,38,38,.80);--log-chip-border:rgba(255,255,255,.10);
+  --about-bg:rgba(32,32,32,.80);
+  --log-area-bg:rgba(26,26,26,.85);
+  --mini-stat-bg:rgba(38,38,38,.80);
+  --toast-bg:rgba(38,38,38,.96);
+  --banner-bg:rgba(209,52,56,.10);
+  --header-bg:rgba(26,26,26,.90);
+  --log-l-OK-bg:rgba(40,160,40,.18);--log-l-OK-color:#5dd95d;
+  --log-l-INFO-bg:rgba(0,140,240,.18);--log-l-INFO-color:#60b8ff;
+  --log-l-STEP-bg:rgba(0,140,240,.12);--log-l-STEP-color:#60b8ff;
+  --log-l-WARN-bg:rgba(230,110,20,.18);--log-l-WARN-color:#ffb060;
+  --log-l-ERROR-bg:rgba(230,50,50,.18);--log-l-ERROR-color:#ff7070;
+}
+
+/* ===== HEADER ===== */
+.header{
+  background-color:var(--header-bg);
+  border-bottom:1px solid rgba(0,0,0,.08);
+  padding:0 28px;height:60px;
+  display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:100;
+  transition:background-color .25s,border-color .2s;
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+}
+@supports not (backdrop-filter:blur(1px)){.header{background-color:rgba(255,255,255,.97)}}
+[data-theme="dark"] .header{border-bottom-color:rgba(255,255,255,.06)}
+.header-icon{
+  width:36px;height:36px;
+  background:var(--fl-primary);border-radius:var(--r-sm);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;box-shadow:0 2px 8px rgba(0,120,212,.35);
+}
+.header-icon svg{width:20px;height:20px}
+.header-text{flex:1}
+.header-title{font-size:var(--t-lg);font-weight:700;line-height:1.2}
+.header-sub{font-size:var(--t-xs);color:var(--text2);margin-top:2px}
+.header-tag{font-size:var(--t-xs);color:var(--text3);background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.07);border-radius:var(--r-sm);padding:4px 12px}
+[data-theme="dark"] .header-tag{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);color:var(--text3)}
+.header-actions{display:flex;align-items:center;gap:8px}
+
+/* ===== THEME TOGGLE ===== */
+.theme-btn{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);transition:all .15s;padding:0;
+}
+.theme-btn:hover{background:rgba(0,0,0,.06);color:var(--text)}
+[data-theme="dark"] .theme-btn:hover{background:rgba(255,255,255,.08)}
+.theme-btn svg{width:17px;height:17px}
+.theme-btn .moon{display:none}
+[data-theme="dark"] .theme-btn .sun{display:none}
+[data-theme="dark"] .theme-btn .moon{display:block}
+
+/* ===== MAIN ===== */
+.main{max-width:1200px;margin:0 auto;padding:24px 24px 48px}
+
+/* ===== BANNER ===== */
+.banner{display:none;background-color:var(--banner-bg);border:1px solid rgba(209,52,56,.18);border-radius:var(--r-lg);padding:16px 20px;margin-bottom:20px;transition:background-color .25s}
+.banner.on{display:block}
+.banner-t{font-size:var(--t-base);font-weight:700;color:var(--fl-red);margin-bottom:6px}
+.banner p{font-size:var(--t-sm);color:var(--text2);margin-bottom:3px;line-height:1.7}
+.banner code{background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:5px;font-size:var(--t-xs);color:var(--fl-primary);font-family:var(--font-mono)}
+
+/* ===== TOP ROW ===== */
+.top-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:860px){.top-row{grid-template-columns:1fr}}
+
+/* ===== CARD ===== */
+.card{
+  background-color:var(--surface);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  transition:background-color .25s,box-shadow .15s;
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid var(--border);
+}
+@supports not (backdrop-filter:blur(1px)){.card{background-color:rgba(255,255,255,.88)}}
+[data-theme="dark"] .card{background-color:var(--surface)}
+.card:hover{box-shadow:var(--shadow-md)}
+.card-head{display:flex;align-items:center;gap:10px;padding:18px 20px 16px;border-bottom:1px solid var(--border)}
+.card-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-icon svg{width:18px;height:18px}
+.card-label{font-size:var(--t-xs);font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.9px}
+.card-head-r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.card-action{font-size:var(--t-xs);color:var(--fl-primary);cursor:pointer;padding:3px 8px;border-radius:5px;transition:background .1s}
+.card-action:hover{background:rgba(0,120,212,.06)}
+[data-theme="dark"] .card-action:hover{background:rgba(0,120,212,.12)}
+.card-body{padding:16px 20px}
+
+/* ===== STAT ===== */
+.stat-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none;padding-bottom:0}
+.stat-row:first-child{padding-top:0}
+.stat-l{font-size:var(--t-sm);color:var(--text2);flex:0 0 auto}
+.stat-r{font-size:var(--t-base);font-weight:700;margin-left:auto;text-align:right}
+.stat-r.ok{color:var(--fl-green)}.stat-r.err{color:var(--fl-red)}.stat-r.muted{color:var(--text3);font-weight:400}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex-shrink:0}
+.dot-g{background:var(--fl-green)}.dot-r{background:var(--fl-red)}.dot-gy{background:var(--text3)}
+
+/* ===== MINI STAT ===== */
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.mini-stat{background-color:var(--mini-stat-bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 10px;text-align:center;transition:background-color .25s,border-color .2s}
+.mini-stat-l{font-size:var(--t-xs);color:var(--text3);margin-bottom:6px}
+.mini-stat-v{font-size:var(--t-xl);font-weight:700;color:var(--text)}
+.mini-stat-v.ok{color:var(--fl-green)}.mini-stat-v.err{color:var(--fl-red)}
+
+/* ===== RIGHT COLUMN STACK ===== */
+.ctrl-stack{display:flex;flex-direction:column;gap:16px}
+
+/* ===== BTN ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 18px;border-radius:var(--r-sm);border:1px solid transparent;cursor:pointer;font-size:var(--t-base);font-weight:600;font-family:var(--font);transition:all .1s;white-space:nowrap;-webkit-user-select:none}
+.btn:active:not(:disabled){transform:scale(.97)}.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-p{background:var(--fl-primary);color:#fff}.btn-p:hover:not(:disabled){background:var(--fl-primary-hover);box-shadow:0 3px 10px rgba(0,120,212,.35)}
+.btn-p:active:not(:disabled){background:var(--fl-primary-press)}
+.btn-s{background-color:var(--btn-s-bg);color:var(--text);border-color:var(--btn-s-border);transition:background-color .2s,border-color .2s}.btn-s:hover:not(:disabled){filter:brightness(.92)}
+.btn-g{background:transparent;color:var(--fl-green);border-color:var(--fl-green)}.btn-g:hover:not(:disabled){background:var(--fl-green-bg)}
+.btn-r{background:transparent;color:var(--fl-red);border-color:var(--fl-red)}.btn-r:hover:not(:disabled){background:var(--fl-red-bg)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ===== FORM ===== */
+.field{margin-bottom:12px}.field:last-child{margin-bottom:0}
+.field-label{display:block;font-size:var(--t-sm);font-weight:600;color:var(--text);margin-bottom:5px}
+.field-hint{display:block;font-size:var(--t-xs);color:var(--text2);margin-top:5px}
+.field-in{width:100%;height:38px;padding:0 12px;background-color:var(--field-bg);border:1px solid var(--field-border);border-radius:var(--r-sm);color:var(--text);font-size:var(--t-base);font-family:var(--font);transition:background-color .25s,border-color .15s,box-shadow .15s}
+.field-in::placeholder{color:var(--text3)}
+.field-in:focus{outline:none;border-color:var(--fl-primary);box-shadow:0 0 0 2px rgba(0,120,212,.15)}
+.field-sel{
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  padding-right:36px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  background-color:var(--field-bg);
+  transition:background-color .25s,border-color .15s;
+}
+[data-theme="dark"] .field-sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")}
+
+/* ===== LOG (FULL WIDTH) ===== */
+.log-card{
+  background-color:var(--surface);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  margin-bottom:16px;
+  transition:background-color .25s;
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid var(--border);
+}
+@supports not (backdrop-filter:blur(1px)){.log-card{background-color:rgba(255,255,255,.88)}}
+[data-theme="dark"] .log-card{background-color:var(--surface)}
+.log-head{display:flex;align-items:center;gap:10px;padding:18px 20px 16px;border-bottom:1px solid var(--border)}
+.log-body{padding:14px 20px}
+.log-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.log-chip{height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--log-chip-border);background-color:var(--log-chip-bg);color:var(--text2);font-size:var(--t-sm);font-weight:600;font-family:var(--font);cursor:pointer;transition:background-color .2s,border-color .2s,filter .1s}
+.log-chip:hover{filter:brightness(.92);color:var(--text)}.log-chip.on{background-color:var(--fl-primary);border-color:var(--fl-primary);color:#fff}
+.log-area{background-color:var(--log-area-bg);border:1px solid var(--border);border-radius:var(--r);height:320px;overflow-y:auto;font-family:var(--font-mono);font-size:13px;line-height:1.75;transition:background-color .25s}
+.log-line{display:flex;align-items:baseline;gap:12px;padding:5px 16px;border-bottom:1px solid rgba(0,0,0,.03)}
+.log-line:last-child{border-bottom:none}.log-line:hover{background:rgba(0,0,0,.02)}
+[data-theme="dark"] .log-line:hover{background:rgba(255,255,255,.02)}
+[data-theme="dark"] .log-line{border-bottom-color:rgba(255,255,255,.03)}
+.log-t{color:var(--text3);flex-shrink:0;font-size:11px;letter-spacing:.3px;width:70px}
+.log-l{padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700;flex-shrink:0;letter-spacing:.4px}
+.log-l-OK{background:var(--log-l-OK-bg);color:var(--log-l-OK-color)}.log-l-INFO{background:var(--log-l-INFO-bg);color:var(--log-l-INFO-color)}.log-l-STEP{background:var(--log-l-STEP-bg);color:var(--log-l-STEP-color)}.log-l-WARN{background:var(--log-l-WARN-bg);color:var(--log-l-WARN-color)}.log-l-ERROR{background:var(--log-l-ERROR-bg);color:var(--log-l-ERROR-color)}
+.log-m{color:var(--text);word-break:break-all}.log-empty{padding:40px 20px;text-align:center;color:var(--text3);font-family:var(--font);font-size:var(--t-sm)}
+
+/* ===== BOTTOM ROW ===== */
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.bottom-row{grid-template-columns:1fr}}
+
+/* ===== ABOUT ===== */
+.about-box{background-color:var(--about-bg);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;font-size:var(--t-sm);color:var(--text2);line-height:2.2;transition:background-color .25s,border-color .2s}
+.about-box p{margin-bottom:2px}
+.ver-check{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:var(--t-xs);color:var(--text3)}
+.ver-check a{color:var(--fl-primary)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;letter-spacing:.4px}
+.tag-b{background:rgba(0,120,212,.1);color:#005a9e}
+a{color:var(--fl-primary);text-decoration:none}a:hover{text-decoration:underline}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:32px;right:32px;padding:12px 20px;border-radius:var(--r);font-size:var(--t-base);font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.16),0 0 0 1px rgba(0,0,0,.05);background-color:var(--toast-bg);transform:translateY(80px);opacity:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s,background-color .25s;z-index:9999;pointer-events:none;backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%)}
+@supports not (backdrop-filter:blur(1px)){.toast{background-color:#fff}}
+.toast.show{transform:translateY(0);opacity:1}
+.toast-ok{color:#0b6a0b}.toast-err{color:#a4262c}.toast-info{color:var(--text)}
+[data-theme="dark"] .toast{box-shadow:0 8px 28px rgba(0,0,0,.60),0 0 0 1px rgba(255,255,255,.06)}
+
+/* ===== SPINNER ===== */
+.spn{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.spn-dk{border-color:rgba(0,0,0,.15);border-top-color:var(--text2)}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;opacity:0;pointer-events:none;
+  transition:opacity .2s;
+}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal-card{
+  width:440px;max-width:92vw;
+  background:var(--surface);
+  border-radius:var(--r-lg);
+  box-shadow:0 16px 60px rgba(0,0,0,.30),0 0 0 1px var(--border);
+  overflow:hidden;
+  backdrop-filter:blur(30px) saturate(200%);
+  -webkit-backdrop-filter:blur(30px) saturate(200%);
+  transform:scale(.92) translateY(16px);
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.modal-overlay.on .modal-card{transform:scale(1) translateY(0)}
+.bg-drop-zone{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  height:120px;border-radius:var(--r);border:2px dashed var(--border);
+  color:var(--text2);transition:all .15s;cursor:pointer;
+}
+.bg-drop-zone svg{width:36px;height:36px;opacity:.5}
+.bg-drop-zone:hover,.bg-drop-zone.drag-over{border-color:var(--fl-primary);background:rgba(0,120,212,.04);color:var(--fl-primary)}
+.bg-drop-zone.drag-over svg{opacity:1}
+.bg-drop-sub{font-size:var(--t-xs);color:var(--text3);margin:0}
+.bg-preview{
+  margin-top:10px;height:90px;border-radius:var(--r-sm);
+  border:1px solid var(--border);overflow:hidden;
+  background:linear-gradient(135deg,#eee 25%,#fff 25%,#fff 50%,#eee 50%,#eee 75%,#fff 75%);
+  background-size:16px 16px;
+  transition:background .2s;
+}
+.bg-preview.has-img{background:transparent;border-color:transparent}
+.bg-info{font-size:var(--t-xs);color:var(--text3);margin-top:6px;text-align:center}
+.drop-overlay{
+  position:fixed;inset:0;z-index:99999;
+  background:rgba(0,0,0,.60);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.drop-overlay.on{opacity:1;pointer-events:all}
+.drop-overlay-inner{
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+  color:#fff;
+}
+.drop-overlay-inner svg{width:72px;height:72px;opacity:.9}
+.drop-overlay-inner p{font-size:24px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+      <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <circle cx="12" cy="20" r="1"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <div class="header-title">锐捷认证 Web 管理面板</div>
+    <div class="header-sub">广东科学技术职业学院 · 校园网</div>
+  </div>
+  <div class="header-tag" id="verTag">v3.1</div>
+  <div class="header-actions">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <button class="theme-btn" onclick="openSettings()" title="背景设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        <circle cx="12" cy="12" r="2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="banner" id="banner">
+    <div class="banner-t">锐捷脚本未安装</div>
+    <p>请先在路由器终端执行安装命令：</p>
+    <p><code>cd /etc/ruijie && sh setup.sh</code></p>
+    <p>或通过 GitHub 安装：</p>
+    <p><code>wget -O- https://bit.ly/rj-gdstvc | sh</code></p>
+  </div>
+
+  <!-- 顶行：左上状态 | 右上控制堆叠 -->
+  <div class="top-row">
+
+    <!-- LEFT: 网络状态 -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon" style="background:var(--fl-primary);color:#fff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <circle cx="12" cy="20" r="1"/>
+          </svg>
+        </div>
+        <div class="card-label">网络状态</div>
+        <div class="card-head-r"><div class="card-action" onclick="refresh()">↻ 刷新</div></div>
+      </div>
+      <div class="card-body">
+        <div class="stat-row"><span class="stat-l">连接状态</span><span class="stat-r" id="s-online"><span class="spn spn-dk"></span></span></div>
+        <div class="stat-row"><span class="stat-l">校园网服务器</span><span class="stat-r" id="s-server">—</span></div>
+        <div class="stat-row"><span class="stat-l">当前账号</span><span class="stat-r" id="s-user">—</span></div>
+        <div class="stat-row"><span class="stat-l">运营商</span><span class="stat-r" id="s-op">—</span></div>
+        <div class="stat-row"><span class="stat-l">最后认证</span><span class="stat-r" id="s-auth">—</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: 控制堆叠 -->
+    <div class="ctrl-stack">
+
+      <!-- 守护进程 -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-icon" style="background:#107C10;color:#fff">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8"/><path d="M12 17v4"/>
+              <path d="M7 8h2"/><path d="M7 12h5"/>
+            </svg>
+          </div>
+          <div class="card-label">守护进程</div>
+        </div>
+        <div class="card-body">
+          <div class="mini-stats">
+            <div class="mini-stat"><div class="mini-stat-l">运行状态</div><div class="mini-stat-v" id="d-run"><span class="spn spn-dk"></span></div></div>
+            <div class="mini-stat"><div class="mini-stat-l">进程 ID</div><div class="mini-stat-v" id="d-pid" style="font-size:18px;font-family:var(--font-mono)">—</div></div>
+            <div class="mini-stat"><div class="mini-stat-l">运行时间</div><div class="mini-stat-v" id="d-up">—</div></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-g" id="btn-start" onclick="daemon('start')">▶ 启动</button>
+            <button class="btn btn-r" id="btn-stop" onclick="daemon('stop')">■ 停止</button>
+            <button class="btn btn-s" id="btn-restart" onclick="daemon('restart')">↻ 重启</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 账号 + 运营商 -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-icon" style="background:#0078D4;color:#fff">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="card-label">账号与网络</div>
+        </div>
+        <div class="card-body">
+          <div class="field"><label class="field-label">用户名</label><input class="field-in" id="f-user" placeholder="学号/工号" autocomplete="off"></div>
+          <div class="field"><label class="field-label">密码</label><input class="field-in" id="f-pass" type="password" placeholder="密码" autocomplete="new-password"></div>
+          <div class="field">
+            <label class="field-label">运营商</label>
+            <select class="field-in field-sel" id="f-op">
+              <option value="DianXin">电信（默认）</option>
+              <option value="LianTong">联通（9栋-22栋）</option>
+            </select>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-p" id="btn-save" onclick="saveAccount()">保存账号</button>
+            <button class="btn btn-s" onclick="switchMode()">切换运营商</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /ctrl-stack -->
+  </div><!-- /top-row -->
+
+  <!-- 实时日志（全宽） -->
+  <div class="log-card">
+    <div class="log-head">
+      <div class="card-icon" style="background:#5c2e91;color:#fff">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M8 13h8"/><path d="M8 17h5"/>
+        </svg>
+      </div>
+      <div class="card-label" style="color:#5c2e91">实时日志</div>
+      <div class="card-head-r">
+        <button class="btn btn-s" style="height:30px;padding:0 12px;font-size:13px" id="btn-log-toggle" onclick="toggleLog()">⏸</button>
+        <button class="btn btn-s" style="height:30px;padding:0 12px;font-size:13px" onclick="loadLog()">↻</button>
+      </div>
+    </div>
+    <div class="log-body">
+      <div class="log-bar">
+        <button class="log-chip on" data-lvl="" onclick="filterLog('')">全部</button>
+        <button class="log-chip" data-lvl="INFO" onclick="filterLog('INFO')">INFO</button>
+        <button class="log-chip" data-lvl="OK" onclick="filterLog('OK')">成功</button>
+        <button class="log-chip" data-lvl="WARN" onclick="filterLog('WARN')">警告</button>
+        <button class="log-chip" data-lvl="ERROR" onclick="filterLog('ERROR')">错误</button>
+      </div>
+      <div class="log-area" id="logViewer"><div class="log-empty">暂无日志，请先启动守护进程</div></div>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon" style="background:#69797e;color:#fff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8"/><path d="M12 17v4"/>
+            <path d="M7 8h2"/><path d="M7 12h5"/>
+          </svg>
+        </div>
+        <div class="card-label">代理设置</div>
+      </div>
+      <div class="card-body">
+        <div class="field"><label class="field-label">HTTP / HTTPS 代理</label><input class="field-in" id="f-proxy" placeholder="如 http://127.0.0.1:7890，留空则不使用"></div>
+        <span class="field-hint">国内校园网通常不需要代理</span>
+        <div style="margin-top:10px"><button class="btn btn-p" onclick="saveSettings()">保存</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon" style="background:#394146;color:#fff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+        </div>
+        <div class="card-label">关于</div>
+      </div>
+      <div class="card-body">
+        <div class="about-box">
+          <p>锐捷认证 Web 管理面板 <span class="tag tag-b">v3.1</span></p>
+          <p>广东科学技术职业学院 · 校园网专用</p>
+          <p><a href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin" target="_blank">GitHub 仓库 →</a></p>
+        </div>
+        <div class="ver-check"><span id="verStatus">检查更新中...</span></div>
+      </div>
+    </div>
+
+  </div><!-- /bottom-row -->
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<!-- 背景设置弹窗 -->
+<div class="modal-overlay" id="bgModal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-card">
+    <div class="card-head">
+      <div class="card-icon" style="background:#5c2e91;color:#fff">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          <circle cx="12" cy="12" r="2"/>
+        </svg>
+      </div>
+      <div class="card-label" style="color:#5c2e91">背景设置</div>
+      <div class="card-head-r"><div class="card-action" onclick="closeSettings()">✕</div></div>
+    </div>
+    <div class="card-body">
+      <div id="bgDropZone" class="bg-drop-zone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+        <p id="bgDropText">拖拽图片到此处</p>
+        <p class="bg-drop-sub">或</p>
+        <label class="btn btn-s" style="cursor:pointer">
+          从文件管理器选择
+          <input type="file" id="f-bg" accept="image/*" style="display:none">
+        </label>
+      </div>
+      <div id="bgPreview" class="bg-preview"></div>
+      <div id="bgInfo" class="bg-info"></div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-s" onclick="clearBg()">恢复默认</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 全局拖拽遮罩 -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-overlay-inner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <path d="M21 15l-5-5L5 21"/>
+    </svg>
+    <p>松开设为背景</p>
+  </div>
+</div>
+
+<script>
+const BASE = '/ruijie-cgi';
+let timer = null, logTimer = null, logPaused = false;
+let curLvl = '', allLog = [];
+let ctrl = null;
+
+// 主题
+function getTheme() { return localStorage.getItem('theme') || ''; }
+function applyTheme(t) {
+  if (t === 'dark' || (t === '' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+}
+
+// 无需重复执行：IIFE 已在 <head> 中设置
+
+// ===== IndexedDB 背景存储 =====
+var _bgDB=null;
+function openBGDB(){
+  return new Promise(function(res,rej){
+    if(_bgDB){res(_bgDB);return}
+    var req=indexedDB.open('ruijie-bg',1);
+    req.onerror=function(){rej(req.error)};
+    req.onsuccess=function(){_bgDB=req.result;res(_bgDB)};
+    req.onupgradeneeded=function(e){
+      var db=e.target.result;
+      if(!db.objectStoreNames.contains('bg'))db.createObjectStore('bg',{keyPath:'id'});
+    };
+  });
+}
+function bgGet(){
+  return new Promise(function(res,rej){
+    openBGDB().then(function(db){
+      var tx=db.transaction('bg','readonly');
+      var store=tx.objectStore('bg');
+      var r=store.get('wallpaper');
+      r.onsuccess=function(){res(r.result)};
+      r.onerror=function(){rej(r.error)};
+    }).catch(rej);
+  });
+}
+function bgPut(blob){
+  return new Promise(function(res,rej){
+    openBGDB().then(function(db){
+      var tx=db.transaction('bg','readwrite');
+      tx.objectStore('bg').put({id:'wallpaper',blob:blob,ts:Date.now()});
+      tx.oncomplete=res;
+      tx.onerror=function(){rej(tx.error)};
+    }).catch(rej);
+  });
+}
+
+var _currentBgUrl=null;
+var _previewBgUrl=null;
+function applyBg(url){
+  if(_currentBgUrl&&_currentBgUrl.startsWith('blob:'))URL.revokeObjectURL(_currentBgUrl);
+  _currentBgUrl=url;
+  document.body.style.setProperty('--bg-image','url('+url+')');
+}
+function clearBg(){
+  if(_currentBgUrl){URL.revokeObjectURL(_currentBgUrl);_currentBgUrl=null}
+  openBGDB().then(function(db){
+    var tx=db.transaction('bg','readwrite');
+    tx.objectStore('bg').delete('wallpaper');
+    tx.oncomplete=function(){};
+    tx.onerror=function(){};
+  }).catch(function(){});
+  document.body.style.setProperty('--bg-image','none');
+  var preview=document.getElementById('bgPreview');
+  var info=document.getElementById('bgInfo');
+  if(preview){preview.style.backgroundImage='';preview.classList.remove('has-img')}
+  if(info)info.textContent='';
+  closeSettings();
+  show('背景已恢复默认','info');
+}
+
+openBGDB().then(function(){
+  bgGet().then(function(rec){
+    if(rec&&rec.blob){
+      applyBg(URL.createObjectURL(rec.blob));
+    }
+  }).catch(function(){});
+});
+
+function openSettings(){
+  if(_previewBgUrl){URL.revokeObjectURL(_previewBgUrl);_previewBgUrl=null}
+  bgGet().then(function(rec){
+    var preview=document.getElementById('bgPreview');
+    var info=document.getElementById('bgInfo');
+    if(rec&&rec.blob){
+      var u=URL.createObjectURL(rec.blob);
+      _previewBgUrl=u;
+      preview.style.backgroundImage='url("'+u+'")';
+      preview.style.backgroundSize='cover';
+      preview.style.backgroundPosition='center';
+      preview.classList.add('has-img');
+      var mb=Math.round(rec.blob.size/1024);
+      info.textContent='已保存 ('+mb+' KB)';
+    }else{
+      preview.style.backgroundImage='';
+      preview.classList.remove('has-img');
+      info.textContent='暂未设置自定义背景';
+    }
+    document.getElementById('bgModal').classList.add('on');
+  }).catch(function(){document.getElementById('bgModal').classList.add('on')});
+}
+function closeSettings(){
+  if(_previewBgUrl){URL.revokeObjectURL(_previewBgUrl);_previewBgUrl=null}
+  document.getElementById('bgModal').classList.remove('on')
+}
+
+function handleBgFile(file){
+  if(!file||!file.type.startsWith('image/')){show('请选择图片文件','err');return}
+  var mb=file.size/1024/1024;
+  if(mb>20){show('图片请勿超过 20MB','err');return}
+  var preview=document.getElementById('bgPreview');
+  var info=document.getElementById('bgInfo');
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var url=e.target.result;
+    preview.style.backgroundImage='url("'+url+'")';
+    preview.style.backgroundSize='cover';
+    preview.style.backgroundPosition='center';
+    preview.classList.add('has-img');
+    info.textContent=file.name+' ('+Math.round(mb*1024)+' KB)';
+  };
+  reader.readAsDataURL(file);
+  bgPut(file).then(function(){
+    applyBg(URL.createObjectURL(file));
+    show('背景已保存','ok');
+    closeSettings();
+  }).catch(function(){show('保存失败','err')});
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('f-bg').addEventListener('change',function(){
+    if(this.files[0])handleBgFile(this.files[0]);
+  });
+
+  var dropZone=document.getElementById('bgDropZone');
+  dropZone.addEventListener('dragover',function(e){e.preventDefault();this.classList.add('drag-over')});
+  dropZone.addEventListener('dragleave',function(){this.classList.remove('drag-over')});
+  dropZone.addEventListener('drop',function(e){
+    e.preventDefault();this.classList.remove('drag-over');
+    if(e.dataTransfer.files[0])handleBgFile(e.dataTransfer.files[0]);
+  });
+
+  var dropOverlay=document.getElementById('dropOverlay');
+  document.addEventListener('dragover',function(e){
+    e.preventDefault();
+    if(e.dataTransfer.types.includes('Files'))dropOverlay.classList.add('on');
+  });
+  document.addEventListener('dragleave',function(e){
+    if(e.target===document||!document.contains(e.relatedTarget))dropOverlay.classList.remove('on');
+  });
+  document.addEventListener('drop',function(e){
+    e.preventDefault();
+    dropOverlay.classList.remove('on');
+    if(e.dataTransfer.files[0])handleBgFile(e.dataTransfer.files[0]);
+  });
+  await refresh();
+  checkVer();
+  loadSettings();
+  loadLog();
+});
+
+async function api(path, opts = {}) {
+  if (ctrl) ctrl.abort();
+  ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(BASE + path, { signal: ctrl.signal, ...opts });
+    clearTimeout(id);
+    return await r.json();
+  } catch (e) {
+    clearTimeout(id);
+    if (e.name === 'AbortError') show('请求超时', 'err');
+    throw e;
+  }
+}
+
+async function refresh() {
+  try { render(await api('/status.sh')); } catch (_) {}
+}
+
+function render(d) {
+  if (!d.installed) { document.getElementById('banner').classList.add('on'); return; }
+  document.getElementById('banner').classList.remove('on');
+  document.getElementById('verTag').textContent = 'v' + (d.version || '3.1');
+  const onl = document.getElementById('s-online');
+  if (d.online) { onl.innerHTML = '<span class="dot dot-g"></span>已连接'; onl.className = 'stat-r ok'; }
+  else { onl.innerHTML = '<span class="dot dot-r"></span>未连接'; onl.className = 'stat-r err'; }
+  const sv = document.getElementById('s-server');
+  sv.textContent = d.online ? '10.30.252.71' : '—';
+  sv.className = d.online ? 'stat-r ok' : 'stat-r';
+  document.getElementById('s-user').textContent = d.username || '—';
+  document.getElementById('s-op').textContent = d.operator === 'LianTong' ? '联通' : '电信';
+  document.getElementById('s-auth').textContent = d.last_auth || '—';
+  const dr = document.getElementById('d-run');
+  if (d.daemon_running) { dr.innerHTML = '<span class="dot dot-g"></span>运行中'; dr.className = 'mini-stat-v ok'; }
+  else { dr.innerHTML = '<span class="dot dot-r"></span>未运行'; dr.className = 'mini-stat-v err'; }
+  document.getElementById('d-pid').textContent = d.daemon_pid || '—';
+  document.getElementById('d-up').textContent = d.daemon_uptime || '—';
+  document.getElementById('btn-start').disabled = d.daemon_running;
+  document.getElementById('btn-stop').disabled  = !d.daemon_running;
+  document.getElementById('f-user').value = d.username || '';
+  document.getElementById('f-op').value = d.operator || 'DianXin';
+  if (timer) clearInterval(timer);
+  timer = setInterval(refresh, 30000);
+}
+
+async function saveAccount() {
+  const u = document.getElementById('f-user').value.trim();
+  const p = document.getElementById('f-pass').value;
+  const o = document.getElementById('f-op').value;
+  if (!u || !p) { show('用户名和密码不能为空', 'err'); return; }
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    const d = await api('/account.sh', { method:'POST', body: new URLSearchParams({username:u, password:p, operator:o}) });
+    if (d.success) { show('账号已保存', 'ok'); document.getElementById('f-pass').value = ''; refresh(); }
+    else show(d.message || '保存失败', 'err');
+  } catch (_) { show('保存失败', 'err'); }
+  finally { btn.disabled = false; btn.textContent = '保存账号'; }
+}
+
+async function daemon(action) {
+  const m = {start:'btn-start', stop:'btn-stop', restart:'btn-restart'};
+  const lbl = {start:'▶ 启动', stop:'■ 停止', restart:'↻ 重启'};
+  const btn = document.getElementById(m[action]);
+  btn.disabled = true; btn.innerHTML = '<span class="spn spn-dk"></span>';
+  try {
+    const d = await api('/daemon.sh', {method:'POST', body: new URLSearchParams({action})});
+    if (d.success) { show(d.message || '操作成功', 'ok'); refresh(); }
+    else show(d.message || '操作失败', 'err');
+  } catch (_) { show('请求失败', 'err'); }
+  finally { btn.disabled = false; btn.innerHTML = lbl[action]; }
+}
+
+async function switchMode() {
+  const o = document.getElementById('f-op').value;
+  const btn = event.target;
+  btn.disabled = true; btn.innerHTML = '<span class="spn spn-dk"></span> 切换中...';
+  try {
+    const d = await api('/mode.sh', {method:'POST', body: new URLSearchParams({operator:o})});
+    if (d.success) { show(d.message || '已切换', 'ok'); refresh(); }
+    else show(d.message || '切换失败', 'err');
+  } catch (_) { show('切换失败', 'err'); }
+  finally { btn.disabled = false; btn.textContent = '切换运营商'; }
+}
+
+async function loadLog() {
+  if (logPaused) return;
+  try {
+    const lvl = curLvl ? '?level=' + curLvl : '';
+    const d = await api('/log.sh' + lvl);
+    allLog = d.lines || [];
+    drawLog();
+    if (!logTimer && !logPaused) logTimer = setInterval(loadLog, 10000);
+  } catch (_) {}
+}
+
+function drawLog() {
+  const v = document.getElementById('logViewer');
+  if (!allLog.length) { v.innerHTML = '<div class="log-empty">暂无日志，请先启动守护进程</div>'; return; }
+  v.innerHTML = allLog.map(l => {
+    const cls = 'log-l log-l-' + (l.level || 'INFO');
+    const ts = l.ts ? l.ts.substring(11, 19) : '';
+    return '<div class="log-line"><span class="log-t">' + esc(ts) + '</span><span class="' + cls + '">' + esc(l.level||'INFO') + '</span><span class="log-m"></span></div>';
+  }).join('');
+  v.querySelectorAll('.log-m').forEach((el, i) => { el.textContent = allLog[i]?.msg || ''; });
+  v.scrollTop = v.scrollHeight;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function filterLog(lvl) { curLvl = lvl; document.querySelectorAll('.log-chip').forEach(c => c.classList.toggle('on', c.dataset.lvl === lvl)); loadLog(); }
+
+function toggleLog() { logPaused = !logPaused; document.getElementById('btn-log-toggle').textContent = logPaused ? '▶' : '⏸'; if (!logPaused) loadLog(); }
+
+async function loadSettings() { try { const d = await api('/settings.sh'); document.getElementById('f-proxy').value = d.proxy_url || ''; } catch (_) {} }
+
+async function saveSettings() {
+  const px = document.getElementById('f-proxy').value.trim();
+  try { const d = await api('/settings.sh', {method:'POST', body: new URLSearchParams({proxy_url:px, proxy_url_https:px})}); if (d.success) show('设置已保存', 'ok'); else show(d.message || '保存失败', 'err'); }
+  catch (_) { show('保存失败', 'err'); }
+}
+
+async function checkVer() {
+  try {
+    const r = await fetch('https://api.github.com/repos/huantuoshen-prog/ruijie-gdstvc-autologin/releases/latest', {signal:AbortSignal.timeout(5000)});
+    const d = await r.json();
+    const v = d.tag_name || '', cur = 'v3.1';
+    const el = document.getElementById('verStatus');
+    if (v && v !== cur) el.innerHTML = '有新版本 <strong>' + v + '</strong>，当前 ' + cur + ' · <a href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/releases" target="_blank">查看更新</a>';
+    else el.textContent = '已是最新版本 (' + cur + ')';
+  } catch (_) { document.getElementById('verStatus').textContent = '无法检查更新（网络不可达）'; }
+}
+
+function show(msg, type = 'info') { const el = document.getElementById('toast'); el.textContent = msg; el.className = 'toast toast-' + type + ' show'; setTimeout(() => el.classList.remove('show'), 3000); }
+</script>
+</body>
+</html>

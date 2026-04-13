@@ -1,0 +1,72 @@
+#!/bin/sh /etc/rc.common
+# ========================================
+# 锐捷 Web 管理面板 - OpenWrt Init Script
+# 注册到 LuCI「服务」菜单
+# ========================================
+
+START=95
+STOP=15
+USE_PROCD=0
+
+# 文件路径（支持 overlay / USB / tmpfs 三种安装位置）
+get_web_root() {
+    if [ -d /overlay/usr/www/ruijie-web ]; then
+        echo "/overlay/usr/www/ruijie-web"
+    elif [ -d /mnt/sda1/ruijie-web ]; then
+        echo "/mnt/sda1/ruijie-web"
+    elif [ -d /www/ruijie-web ]; then
+        echo "/www/ruijie-web"
+    fi
+}
+
+start() {
+    local web_root
+    web_root=$(get_web_root)
+
+    if [ -z "$web_root" ]; then
+        echo "ruijie-panel: Web 文件未找到，请先运行安装脚本"
+        return 1
+    fi
+
+    local router_ip
+    router_ip=$(uci get network.lan.ipaddr 2>/dev/null || echo "192.168.5.1")
+
+    # 注意：uhttpd init 脚本使用 option home（不是 document_root）
+    uci set uhttpd.ruijie='uhttpd' 2>/dev/null
+    uci set uhttpd.ruijie.listen_http="$router_ip:8080" 2>/dev/null
+    uci set uhttpd.ruijie.home="$web_root" 2>/dev/null
+    uci set uhttpd.ruijie.interpreter='.sh=/bin/sh' 2>/dev/null
+    uci set uhttpd.ruijie.cgi_prefix='/ruijie-cgi' 2>/dev/null
+    uci commit uhttpd
+
+    # 单独 reload 该实例（不打扰 LuCI 用的主实例）
+    /etc/init.d/uhttpd restart 2>/dev/null
+    echo "ruijie-panel: 已启动，访问 http://$router_ip:8080/"
+}
+
+stop() {
+    # 删除独立实例（让 uhttpd 只跑 LuCI）
+    uci del uhttpd.ruijie 2>/dev/null
+    uci commit uhttpd
+    /etc/init.d/uhttpd restart 2>/dev/null
+    echo "ruijie-panel: 已停止"
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+reload() {
+    /etc/init.d/uhttpd restart 2>/dev/null
+}
+
+enabled() {
+    # 检查是否在 rc.d 中注册
+    [ -L /etc/rc.d/S95ruijie-panel ] 2>/dev/null
+}
+
+boot() {
+    start
+}
