@@ -115,7 +115,6 @@ for _file in $DOWNLOAD_FILES; do
         echo_error "下载失败: $_file"
         _fetch_ok=false
     fi
-    fi
 done
 
 if [ "$_fetch_ok" != "true" ]; then
