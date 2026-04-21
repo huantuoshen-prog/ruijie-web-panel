@@ -49,6 +49,8 @@ state = {
     "proxy_url": "",
     "proxy_url_https": "",
     "log_lines": [],
+    "panel_password": "panel-secret",
+    "authenticated": False,
 }
 
 # 预填充模拟日志
@@ -97,6 +99,8 @@ def parse_body(environ):
         return {}
 
 def handle_status(environ):
+    if not state["authenticated"]:
+        return json.dumps({"success": False, "message": "请先登录 Web 面板"}), 401
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     state["last_auth"] = ts
     return json.dumps({
@@ -112,29 +116,33 @@ def handle_status(environ):
         "last_auth": state["last_auth"],
         "version": state["version"],
         "message": "",
-    })
+    }), 200
 
 def handle_account(environ):
+    if not state["authenticated"]:
+        return json.dumps({"success": False, "message": "请先登录 Web 面板"}), 401
     method = environ.get("REQUEST_METHOD", "GET")
     if method == "POST":
         try:
             params = parse_body(environ)
         except Exception as e:
-            return json.dumps({"success": False, "message": f"保存失败: {e}"})
+            return json.dumps({"success": False, "message": f"保存失败: {e}"}), 500
         if "username" in params:
             state["username"] = params["username"]
         if "operator" in params:
             state["operator"] = params["operator"]
-        return json.dumps({"success": True, "message": "账号已保存"})
+        return json.dumps({"success": True, "message": "账号已保存"}), 200
     else:
         return json.dumps({
             "username": state["username"],
             "operator": state["operator"],
             "account_type": state["account_type"],
             "proxy_url": state["proxy_url"],
-        })
+        }), 200
 
 def handle_daemon(environ):
+    if not state["authenticated"]:
+        return json.dumps({"success": False, "message": "请先登录 Web 面板"}), 401
     params = parse_body(environ)
     action = params.get("action", "")
 
@@ -146,29 +154,31 @@ def handle_daemon(environ):
         state["daemon_state"] = "ONLINE"
         state["daemon_start_time"] = time.time()
         state["log_lines"].append({"ts": ts, "level": "OK", "msg": "守护进程已启动"})
-        return json.dumps({"success": True, "pid": str(state["daemon_pid"]), "message": "守护进程已启动"})
+        return json.dumps({"success": True, "pid": str(state["daemon_pid"]), "message": "守护进程已启动"}), 200
     elif action == "stop":
         state["daemon_running"] = False
         state["daemon_state"] = "STOPPED"
         state["daemon_start_time"] = None
         state["log_lines"].append({"ts": ts, "level": "INFO", "msg": "守护进程已停止"})
-        return json.dumps({"success": True, "message": "守护进程已停止"})
+        return json.dumps({"success": True, "message": "守护进程已停止"}), 200
     elif action == "restart":
         state["daemon_running"] = True
         state["daemon_pid"] = random.randint(10000, 99999)
         state["daemon_state"] = "ONLINE"
         state["daemon_start_time"] = time.time()
         state["log_lines"].append({"ts": ts, "level": "OK", "msg": "守护进程已重启"})
-        return json.dumps({"success": True, "pid": str(state["daemon_pid"]), "message": "守护进程已重启"})
+        return json.dumps({"success": True, "pid": str(state["daemon_pid"]), "message": "守护进程已重启"}), 200
     else:
-        return json.dumps({"success": False, "message": "未知操作，请使用 start/stop/restart"})
+        return json.dumps({"success": False, "message": "未知操作，请使用 start/stop/restart"}), 400
 
 def handle_mode(environ):
+    if not state["authenticated"]:
+        return json.dumps({"success": False, "message": "请先登录 Web 面板"}), 401
     params = parse_body(environ)
     operator = params.get("operator", "")
 
     if operator not in ("DianXin", "LianTong"):
-        return json.dumps({"success": False, "message": "运营商参数无效"})
+        return json.dumps({"success": False, "message": "运营商参数无效"}), 400
 
     state["operator"] = operator
     state["online"] = True
@@ -179,9 +189,11 @@ def handle_mode(environ):
         "success": True,
         "message": f"已切换到{operator}，网络已连接",
         "operator": operator,
-    })
+    }), 200
 
 def handle_log(environ):
+    if not state["authenticated"]:
+        return json.dumps({"success": False, "message": "请先登录 Web 面板"}), 401
     qs = parse_qs(environ.get("QUERY_STRING", ""))
     level = qs.get("level", [""])[0]
     try:
@@ -194,25 +206,43 @@ def handle_log(environ):
         lines = [l for l in lines if l["level"].upper() == level.upper()]
 
     result = [{"ts": l["ts"], "level": l["level"], "msg": json_esc(l["msg"])} for l in lines]
-    return json.dumps({"lines": result, "total": len(result)})
+    return json.dumps({"lines": result, "total": len(result)}), 200
 
 def handle_settings(environ):
+    if not state["authenticated"]:
+        return json.dumps({"success": False, "message": "请先登录 Web 面板"}), 401
     method = environ.get("REQUEST_METHOD", "GET")
     if method == "POST":
         try:
             params = parse_body(environ)
         except Exception:
-            return json.dumps({"success": False, "message": "保存失败"})
+            return json.dumps({"success": False, "message": "保存失败"}), 500
         if "proxy_url" in params:
             state["proxy_url"] = params["proxy_url"]
         if "proxy_url_https" in params:
             state["proxy_url_https"] = params["proxy_url_https"]
-        return json.dumps({"success": True, "message": "设置已保存"})
+        return json.dumps({"success": True, "message": "设置已保存"}), 200
     else:
         return json.dumps({
             "proxy_url": state["proxy_url"],
             "proxy_url_https": state["proxy_url_https"],
-        })
+        }), 200
+
+def handle_auth(environ):
+    method = environ.get("REQUEST_METHOD", "GET")
+    if method == "GET":
+        return json.dumps({"success": True, "authenticated": state["authenticated"]}), 200
+
+    params = parse_body(environ)
+    if params.get("action") == "logout":
+        state["authenticated"] = False
+        return json.dumps({"success": True, "message": "已退出登录"}), 200
+
+    if params.get("password") == state["panel_password"]:
+        state["authenticated"] = True
+        return json.dumps({"success": True, "message": "登录成功"}), 200
+
+    return json.dumps({"success": False, "message": "面板密码错误"}), 200
 
 # ---------- HTTP 服务器 ----------
 class RuijieHandler(BaseHTTPRequestHandler):
@@ -242,8 +272,11 @@ class RuijieHandler(BaseHTTPRequestHandler):
 
     def handle_cgi(self, path):
         script = path[len("/ruijie-cgi/"):].split("?")[0]
+        if script.endswith(".sh"):
+            script = script[:-3]
 
         handlers = {
+            "auth":     handle_auth,
             "status":   handle_status,
             "account":  handle_account,
             "daemon":   handle_daemon,
@@ -252,10 +285,6 @@ class RuijieHandler(BaseHTTPRequestHandler):
             "settings": handle_settings,
         }
 
-        if script not in handlers:
-            self.send_json({"success": False, "message": "未知接口"})
-            return
-
         environ = {
             "REQUEST_METHOD": self.command,
             "QUERY_STRING": urlparse(path).query,
@@ -263,8 +292,12 @@ class RuijieHandler(BaseHTTPRequestHandler):
             "wsgi_input": self.rfile,
         }
 
-        result = handlers[script](environ)
-        self.send_json_str(result)
+        if script not in handlers:
+            self.send_json({"success": False, "message": "未知接口"}, status=404)
+            return
+
+        result, status = handlers[script](environ)
+        self.send_json_str(result, status=status)
 
     def serve_file(self, filepath):
         if not os.path.exists(filepath):
@@ -281,16 +314,16 @@ class RuijieHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def send_json_str(self, text):
+    def send_json_str(self, text, status=200):
         data = text.encode("utf-8")
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", len(data))
         self.end_headers()
         self.wfile.write(data)
 
-    def send_json(self, data):
-        self.send_json_str(json.dumps(data))
+    def send_json(self, data, status=200):
+        self.send_json_str(json.dumps(data), status=status)
 
 # ---------- 入口 ----------
 if __name__ == "__main__":

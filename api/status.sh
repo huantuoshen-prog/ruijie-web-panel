@@ -1,9 +1,11 @@
 #!/bin/sh
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/../api/common.sh"
 # ========================================
 # API: 获取系统状态
 # GET /ruijie-cgi/status
 # ========================================
+
+panel_require_auth || exit 0
 
 echo "Content-Type: application/json; charset=utf-8"
 echo ""
