@@ -5,7 +5,7 @@
 # body: operator=DianXin|LianTong（application/x-www-form-urlencoded）
 # ========================================
 
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/../api/common.sh"
 
 panel_require_auth || exit 0
 

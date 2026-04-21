@@ -1,5 +1,5 @@
 #!/bin/sh
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/../api/common.sh"
 
 panel_require_auth || exit 0
 

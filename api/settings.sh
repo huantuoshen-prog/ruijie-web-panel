@@ -5,7 +5,7 @@
 # POST /ruijie-cgi/settings  → 保存代理设置
 # ========================================
 
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/../api/common.sh"
 
 panel_require_auth || exit 0
 

@@ -28,7 +28,7 @@ json_esc() {
 
 PANEL_AUTH_DIR="${RUIJIE_PANEL_AUTH_DIR:-/etc/ruijie-panel}"
 PANEL_AUTH_FILE="${RUIJIE_PANEL_AUTH_FILE:-${PANEL_AUTH_DIR}/auth.conf}"
-PANEL_SESSION_FILE="${RUIJIE_PANEL_SESSION_FILE:-/tmp/ruijie-panel.session}"
+PANEL_SESSION_DIR="${RUIJIE_PANEL_SESSION_DIR:-/tmp/ruijie-panel.sessions}"
 PANEL_SESSION_COOKIE="ruijie_panel_session"
 PANEL_LOGFILE="${RUIJIE_PANEL_LOGFILE:-${LOGFILE:-/var/log/ruijie-daemon.log}}"
 
@@ -55,16 +55,38 @@ panel_extract_cookie() {
         | sed -n "s/^${_cookie_name}=//p" | head -n 1
 }
 
-panel_session_token() {
-    if [ -f "$PANEL_SESSION_FILE" ]; then
-        cat "$PANEL_SESSION_FILE" 2>/dev/null
-    fi
+panel_session_path() {
+    _token="$1"
+    case "$_token" in
+        ''|*[!0-9a-f]*)
+            return 1
+            ;;
+    esac
+    printf '%s/%s' "$PANEL_SESSION_DIR" "$_token"
+}
+
+panel_session_exists() {
+    _path="$(panel_session_path "$1")" || return 1
+    [ -f "$_path" ]
+}
+
+panel_create_session() {
+    mkdir -p "$PANEL_SESSION_DIR" || return 1
+    _token="$(panel_new_session_token)" || return 1
+    _path="$(panel_session_path "$_token")" || return 1
+    : > "$_path" || return 1
+    chmod 600 "$_path" 2>/dev/null || true
+    printf '%s' "$_token"
+}
+
+panel_destroy_session() {
+    _path="$(panel_session_path "$1")" || return 0
+    rm -f "$_path" 2>/dev/null
 }
 
 panel_is_authenticated() {
     _cookie_token="$(panel_extract_cookie "$PANEL_SESSION_COOKIE")"
-    _session_token="$(panel_session_token)"
-    [ -n "$_cookie_token" ] && [ -n "$_session_token" ] && [ "$_cookie_token" = "$_session_token" ]
+    [ -n "$_cookie_token" ] && panel_session_exists "$_cookie_token"
 }
 
 panel_new_session_token() {

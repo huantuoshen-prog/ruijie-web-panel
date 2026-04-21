@@ -1,5 +1,5 @@
 #!/bin/sh
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/../api/common.sh"
 # ========================================
 # API: 获取系统状态
 # GET /ruijie-cgi/status
