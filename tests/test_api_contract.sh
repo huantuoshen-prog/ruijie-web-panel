@@ -7,7 +7,6 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "${0}")/.." && pwd)"
-MAIN_REPO_DIR="${PROJECT_DIR}/../ruijie-gdstvc-autologin"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,6 +35,9 @@ trap cleanup EXIT
 export HOME="${TMPDIR}/home"
 mkdir -p "${HOME}/.config/ruijie" "${TMPDIR}/panel-auth" "${TMPDIR}/webroot/api" "${TMPDIR}/webroot/ruijie-cgi"
 
+FAKE_RUIJIE_DIR="${TMPDIR}/fake-ruijie"
+mkdir -p "${FAKE_RUIJIE_DIR}/lib"
+
 CONFIG_FILE="${HOME}/.config/ruijie/ruijie.conf"
 cat > "$CONFIG_FILE" <<'EOF'
 USERNAME=teacher01
@@ -55,6 +57,72 @@ EOF
 
 printf 'PASSWORD_SHA256=%s\n' "$(printf 'panel-secret' | sha256sum | awk '{print $1}')" \
     > "${TMPDIR}/panel-auth/auth.conf"
+
+cat > "${FAKE_RUIJIE_DIR}/ruijie.sh" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+
+cat > "${FAKE_RUIJIE_DIR}/lib/common.sh" <<'EOF'
+#!/bin/sh
+RUIJIE_VERSION="3.1"
+CONFIG_DIR="${HOME}/.config/ruijie"
+CONFIG_FILE="${CONFIG_DIR}/ruijie.conf"
+PIDFILE="${TMPDIR:-/tmp}/ruijie-daemon.pid"
+LOGFILE="${TMPDIR:-/tmp}/ruijie-daemon.log"
+EOF
+
+cat > "${FAKE_RUIJIE_DIR}/lib/config.sh" <<'EOF'
+#!/bin/sh
+load_config() {
+    [ -f "$CONFIG_FILE" ] || return 1
+    while IFS='=' read -r key value; do
+        case "$key" in
+            USERNAME|PASSWORD|ACCOUNT_TYPE|OPERATOR|DAEMON_INTERVAL|PROXY_URL|PROXY_URL_HTTPS|NO_PROXY_LIST)
+                eval "$key=\"\$value\""
+                ;;
+        esac
+    done < "$CONFIG_FILE"
+}
+
+save_config() {
+    mkdir -p "$CONFIG_DIR"
+    cat > "$CONFIG_FILE" <<CONFIG
+USERNAME=$1
+PASSWORD=$2
+ACCOUNT_TYPE=$3
+OPERATOR=${OPERATOR:-DianXin}
+DAEMON_INTERVAL=${DAEMON_INTERVAL:-300}
+PROXY_URL=${PROXY_URL:-}
+PROXY_URL_HTTPS=${PROXY_URL_HTTPS:-}
+NO_PROXY_LIST=${NO_PROXY_LIST:-www.google.cn}
+CONFIG
+}
+
+fix_config_perms() {
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+}
+
+get_last_auth_time() {
+    printf '%s' '2026-04-21 12:00:01'
+}
+EOF
+
+cat > "${FAKE_RUIJIE_DIR}/lib/daemon.sh" <<'EOF'
+#!/bin/sh
+daemon_is_running() {
+    return 1
+}
+EOF
+
+cat > "${FAKE_RUIJIE_DIR}/lib/network.sh" <<'EOF'
+#!/bin/sh
+check_network() {
+    return 0
+}
+EOF
+
+chmod +x "${FAKE_RUIJIE_DIR}/ruijie.sh" "${FAKE_RUIJIE_DIR}/lib/"*.sh
 
 cp "${PROJECT_DIR}/api/"*.sh "${TMPDIR}/webroot/api/"
 for name in auth account daemon log mode settings status; do
@@ -76,7 +144,7 @@ run_cgi() {
         REQUEST_METHOD="$method" \
         CONTENT_LENGTH="$content_length" \
         HTTP_COOKIE="$cookie" \
-        RUIJIE_DIR="$MAIN_REPO_DIR" \
+        RUIJIE_DIR="$FAKE_RUIJIE_DIR" \
         RUIJIE_PANEL_AUTH_DIR="${TMPDIR}/panel-auth" \
         RUIJIE_PANEL_SESSION_DIR="${TMPDIR}/panel-sessions" \
         RUIJIE_PANEL_LOGFILE="${TMPDIR}/log.txt" \
