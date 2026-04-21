@@ -94,6 +94,17 @@ response_body() {
     }'
 }
 
+response_header_value() {
+    printf '%s' "$1" | awk -v header="$2" '{
+        sub(/\r$/, "", $0)
+        if ($0 ~ ("^" header ": ")) {
+            sub("^" header ": ", "", $0)
+            print
+            exit
+        }
+    }'
+}
+
 echo "========== Web Panel API 合同测试 =========="
 
 unauth_status="$(run_cgi status GET)"
@@ -108,7 +119,7 @@ else
     fail "登录接口未返回会话 Cookie"
 fi
 
-session_cookie="$(echo "$auth_login" | sed -n 's/^Set-Cookie: \([^;]*\).*/\1/p' | head -n 1)"
+session_cookie="$(response_header_value "$auth_login" "Set-Cookie" | sed 's/;.*//')"
 if echo "$auth_login" | grep -q '"success":true'; then
     pass "登录接口返回成功 JSON"
 else
@@ -116,7 +127,7 @@ else
 fi
 
 second_login="$(run_cgi auth POST 'password=panel-secret')"
-second_cookie="$(echo "$second_login" | sed -n 's/^Set-Cookie: \([^;]*\).*/\1/p' | head -n 1)"
+second_cookie="$(response_header_value "$second_login" "Set-Cookie" | sed 's/;.*//')"
 second_status="$(run_cgi status GET '' "$second_cookie")"
 echo "$second_status" | grep -q '"installed":true' \
     && pass "第二个会话登录后可以访问状态接口" \
