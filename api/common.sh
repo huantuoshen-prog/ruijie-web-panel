@@ -52,7 +52,7 @@ panel_get_auth_hash() {
 panel_extract_cookie() {
     _cookie_name="$1"
     printf '%s' "${HTTP_COOKIE:-}" | tr ';' '\n' | sed 's/^ *//;s/ *$//' \
-        | sed -n "s/^${_cookie_name}=//p" | head -n 1
+        | sed -n "s/^${_cookie_name}=//p" | head -n 1 | tr -d '\r\n'
 }
 
 panel_session_path() {
