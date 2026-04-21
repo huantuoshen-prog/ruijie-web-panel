@@ -35,6 +35,7 @@ INSTALL_MARKER="${INSTALL_TEMP}/.installed"
 DOWNLOAD_FILES="
 index.html
 uninstall.sh
+api/auth.sh
 api/account.sh
 api/common.sh
 api/daemon.sh
@@ -44,6 +45,79 @@ api/settings.sh
 api/status.sh
 init.d/ruijie-panel
 "
+
+PANEL_AUTH_DIR="/etc/ruijie-panel"
+PANEL_AUTH_FILE="${PANEL_AUTH_DIR}/auth.conf"
+
+hash_password() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        printf '%s' "$1" | sha256sum | awk '{print $1}'
+    elif command -v openssl >/dev/null 2>&1; then
+        printf '%s' "$1" | openssl dgst -sha256 | awk '{print $NF}'
+    else
+        return 1
+    fi
+}
+
+generate_panel_password() {
+    if command -v od >/dev/null 2>&1; then
+        dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
+    else
+        date '+%s%N'
+    fi
+}
+
+read_secret() {
+    _prompt="$1"
+    printf '%s' "$_prompt"
+    stty -echo 2>/dev/null
+    read _secret
+    stty echo 2>/dev/null
+    printf '\n'
+    printf '%s' "$_secret"
+}
+
+ensure_panel_auth() {
+    mkdir -p "$PANEL_AUTH_DIR"
+
+    if [ -f "$PANEL_AUTH_FILE" ]; then
+        echo_ok "检测到已存在的面板密码配置，保留原配置"
+        return 0
+    fi
+
+    if [ -t 0 ]; then
+        while true; do
+            _password="$(read_secret '请设置 Web 面板密码: ')"
+            _confirm="$(read_secret '请再次输入 Web 面板密码: ')"
+
+            if [ -z "$_password" ]; then
+                echo_warn "面板密码不能为空"
+            elif [ "$_password" != "$_confirm" ]; then
+                echo_warn "两次输入的密码不一致，请重试"
+            else
+                break
+            fi
+        done
+    else
+        _password="$(generate_panel_password)"
+        echo_warn "未检测到交互终端，已自动生成 Web 面板密码"
+    fi
+
+    _password_hash="$(hash_password "$_password")"
+    if [ -z "$_password_hash" ]; then
+        echo_error "无法生成面板密码摘要，请确认系统提供 sha256sum 或 openssl"
+        exit 1
+    fi
+
+    cat > "$PANEL_AUTH_FILE" <<EOF
+PASSWORD_SHA256=${_password_hash}
+EOF
+    chmod 600 "$PANEL_AUTH_FILE" 2>/dev/null || true
+
+    echo_ok "Web 面板密码已初始化"
+    echo "  面板密码：$_password"
+    echo "  如需修改，请删除 $PANEL_AUTH_FILE 后重新运行安装脚本"
+}
 
 # ----------------------------------------
 # 1. 检测运行环境
@@ -124,6 +198,12 @@ fi
 echo_ok "文件下载完成"
 
 # ----------------------------------------
+# 3.5 初始化面板密码
+# ----------------------------------------
+echo_info "初始化 Web 面板访问保护..."
+ensure_panel_auth
+
+# ----------------------------------------
 # 4. 复制 Web 文件到目标目录
 # ----------------------------------------
 echo_info "安装 Web 文件到 $WEB_TARGET ..."
@@ -143,8 +223,12 @@ echo "$WEB_TARGET" > "${WEB_TARGET}/.install_path"
 chmod +x "${WEB_TARGET}/api/"*.sh 2>/dev/null || true
 chmod +x "${WEB_TARGET}/uninstall.sh" 2>/dev/null || true
 
-# 创建 CGI 软链接（前端调用 /ruijie-cgi/*，实际脚本在 /api/*.sh）
-ln -sf api "${WEB_TARGET}/ruijie-cgi"
+# 创建 CGI 路由目录（前端调用 /ruijie-cgi/<name>）
+rm -rf "${WEB_TARGET}/ruijie-cgi"
+mkdir -p "${WEB_TARGET}/ruijie-cgi"
+for _name in auth account daemon log mode settings status; do
+    ln -sf "../api/${_name}.sh" "${WEB_TARGET}/ruijie-cgi/${_name}"
+done
 echo_ok "Web 文件已复制"
 
 # ----------------------------------------

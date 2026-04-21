@@ -39,8 +39,8 @@ start() {
     uci set uhttpd.ruijie.cgi_prefix='/ruijie-cgi' 2>/dev/null
     uci commit uhttpd
 
-    # 单独 reload 该实例（不打扰 LuCI 用的主实例）
-    /etc/init.d/uhttpd restart 2>/dev/null
+    # 重新加载 uhttpd，使新实例生效；失败时再回退重启
+    /etc/init.d/uhttpd reload 2>/dev/null || /etc/init.d/uhttpd restart 2>/dev/null
     echo "ruijie-panel: 已启动，访问 http://$router_ip:8080/"
 }
 
@@ -48,7 +48,7 @@ stop() {
     # 删除独立实例（让 uhttpd 只跑 LuCI）
     uci del uhttpd.ruijie 2>/dev/null
     uci commit uhttpd
-    /etc/init.d/uhttpd restart 2>/dev/null
+    /etc/init.d/uhttpd reload 2>/dev/null || /etc/init.d/uhttpd restart 2>/dev/null
     echo "ruijie-panel: 已停止"
 }
 
@@ -59,7 +59,7 @@ restart() {
 }
 
 reload() {
-    /etc/init.d/uhttpd restart 2>/dev/null
+    /etc/init.d/uhttpd reload 2>/dev/null || /etc/init.d/uhttpd restart 2>/dev/null
 }
 
 enabled() {

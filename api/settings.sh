@@ -7,6 +7,8 @@
 
 . "$(dirname "$0")/common.sh"
 
+panel_require_auth || exit 0
+
 echo "Content-Type: application/json; charset=utf-8"
 echo ""
 

@@ -338,6 +338,13 @@ a{color:var(--fl-primary);text-decoration:none}a:hover{text-decoration:underline
         <circle cx="12" cy="12" r="2"/>
       </svg>
     </button>
+    <button class="theme-btn" onclick="logoutPanel()" title="退出登录">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <path d="M16 17l5-5-5-5"/>
+        <path d="M21 12H9"/>
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -565,6 +572,8 @@ const BASE = '/ruijie-cgi';
 let timer = null, logTimer = null, logPaused = false;
 let curLvl = '', allLog = [];
 let ctrl = null;
+let authReady = false;
+let authRequest = null;
 
 // 主题
 function getTheme() { return localStorage.getItem('theme') || ''; }
@@ -728,20 +737,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     dropOverlay.classList.remove('on');
     if(e.dataTransfer.files[0])handleBgFile(e.dataTransfer.files[0]);
   });
-  await refresh();
+  if (await ensureAuth()) {
+    await refresh();
+    loadSettings();
+    loadLog();
+  }
   checkVer();
-  loadSettings();
-  loadLog();
 });
 
-async function api(path, opts = {}) {
+async function requestJSON(path, opts = {}) {
   if (ctrl) ctrl.abort();
   ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const r = await fetch(BASE + path, { signal: ctrl.signal, ...opts });
+    const r = await fetch(BASE + path, { credentials: 'same-origin', signal: ctrl.signal, ...opts });
     clearTimeout(id);
-    return await r.json();
+    const text = await r.text();
+    const data = text ? JSON.parse(text) : {};
+    data.__status = r.status;
+    return data;
   } catch (e) {
     clearTimeout(id);
     if (e.name === 'AbortError') show('请求超时', 'err');
@@ -749,8 +763,48 @@ async function api(path, opts = {}) {
   }
 }
 
+async function ensureAuth(forcePrompt = false) {
+  if (authReady && !forcePrompt) return true;
+  if (authRequest) return authRequest;
+
+  authRequest = (async () => {
+    if (!forcePrompt) {
+      const status = await requestJSON('/auth');
+      if (status.authenticated) {
+        authReady = true;
+        return true;
+      }
+    }
+
+    while (true) {
+      const password = window.prompt('请输入 Web 面板密码');
+      if (password === null) return false;
+      const login = await requestJSON('/auth', { method: 'POST', body: new URLSearchParams({ password }) });
+      if (login.success) {
+        authReady = true;
+        show('登录成功', 'ok');
+        return true;
+      }
+      show(login.message || '登录失败', 'err');
+    }
+  })().finally(() => { authRequest = null; });
+
+  return authRequest;
+}
+
+async function api(path, opts = {}) {
+  if (!await ensureAuth()) throw new Error('auth-cancelled');
+  let data = await requestJSON(path, opts);
+  if (data.__status === 401) {
+    authReady = false;
+    if (!await ensureAuth(true)) throw new Error('auth-cancelled');
+    data = await requestJSON(path, opts);
+  }
+  return data;
+}
+
 async function refresh() {
-  try { render(await api('/status.sh')); } catch (_) {}
+  try { render(await api('/status')); } catch (_) {}
 }
 
 function render(d) {
@@ -787,7 +841,7 @@ async function saveAccount() {
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = '保存中...';
   try {
-    const d = await api('/account.sh', { method:'POST', body: new URLSearchParams({username:u, password:p, operator:o}) });
+    const d = await api('/account', { method:'POST', body: new URLSearchParams({username:u, password:p, operator:o}) });
     if (d.success) { show('账号已保存', 'ok'); document.getElementById('f-pass').value = ''; refresh(); }
     else show(d.message || '保存失败', 'err');
   } catch (_) { show('保存失败', 'err'); }
@@ -800,7 +854,7 @@ async function daemon(action) {
   const btn = document.getElementById(m[action]);
   btn.disabled = true; btn.innerHTML = '<span class="spn spn-dk"></span>';
   try {
-    const d = await api('/daemon.sh', {method:'POST', body: new URLSearchParams({action})});
+    const d = await api('/daemon', {method:'POST', body: new URLSearchParams({action})});
     if (d.success) { show(d.message || '操作成功', 'ok'); refresh(); }
     else show(d.message || '操作失败', 'err');
   } catch (_) { show('请求失败', 'err'); }
@@ -812,7 +866,7 @@ async function switchMode() {
   const btn = event.target;
   btn.disabled = true; btn.innerHTML = '<span class="spn spn-dk"></span> 切换中...';
   try {
-    const d = await api('/mode.sh', {method:'POST', body: new URLSearchParams({operator:o})});
+    const d = await api('/mode', {method:'POST', body: new URLSearchParams({operator:o})});
     if (d.success) { show(d.message || '已切换', 'ok'); refresh(); }
     else show(d.message || '切换失败', 'err');
   } catch (_) { show('切换失败', 'err'); }
@@ -823,7 +877,7 @@ async function loadLog() {
   if (logPaused) return;
   try {
     const lvl = curLvl ? '?level=' + curLvl : '';
-    const d = await api('/log.sh' + lvl);
+    const d = await api('/log' + lvl);
     allLog = d.lines || [];
     drawLog();
     if (!logTimer && !logPaused) logTimer = setInterval(loadLog, 10000);
@@ -848,12 +902,27 @@ function filterLog(lvl) { curLvl = lvl; document.querySelectorAll('.log-chip').f
 
 function toggleLog() { logPaused = !logPaused; document.getElementById('btn-log-toggle').textContent = logPaused ? '▶' : '⏸'; if (!logPaused) loadLog(); }
 
-async function loadSettings() { try { const d = await api('/settings.sh'); document.getElementById('f-proxy').value = d.proxy_url || ''; } catch (_) {} }
+async function loadSettings() { try { const d = await api('/settings'); document.getElementById('f-proxy').value = d.proxy_url || ''; } catch (_) {} }
 
 async function saveSettings() {
   const px = document.getElementById('f-proxy').value.trim();
-  try { const d = await api('/settings.sh', {method:'POST', body: new URLSearchParams({proxy_url:px, proxy_url_https:px})}); if (d.success) show('设置已保存', 'ok'); else show(d.message || '保存失败', 'err'); }
+  try { const d = await api('/settings', {method:'POST', body: new URLSearchParams({proxy_url:px, proxy_url_https:px})}); if (d.success) show('设置已保存', 'ok'); else show(d.message || '保存失败', 'err'); }
   catch (_) { show('保存失败', 'err'); }
+}
+
+async function logoutPanel() {
+  try {
+    const d = await requestJSON('/auth', { method: 'POST', body: new URLSearchParams({ action: 'logout' }) });
+    authReady = false;
+    show(d.message || '已退出登录', 'ok');
+    if (await ensureAuth(true)) {
+      await refresh();
+      loadSettings();
+      loadLog();
+    }
+  } catch (_) {
+    show('退出登录失败', 'err');
+  }
 }
 
 async function checkVer() {

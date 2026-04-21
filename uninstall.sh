@@ -13,6 +13,10 @@ echo "正在卸载锐捷认证 Web 管理面板..."
 rm -f /overlay/etc/init.d/ruijie-panel 2>/dev/null
 rm -f /etc/init.d/ruijie-panel 2>/dev/null
 
+# 删除面板认证与会话
+rm -rf /etc/ruijie-panel 2>/dev/null
+rm -f /tmp/ruijie-panel.session 2>/dev/null
+
 # 删除 Web 文件（覆盖所有可能的安装路径）
 rm -rf /overlay/usr/www/ruijie-web 2>/dev/null
 rm -rf /mnt/sda1/ruijie-web 2>/dev/null
@@ -24,7 +28,7 @@ if uci get uhttpd.ruijie >/dev/null 2>&1; then
     uci commit uhttpd
 fi
 
-# 重启 Web 服务
-/etc/init.d/uhttpd restart 2>/dev/null
+# 重新加载 Web 服务
+/etc/init.d/uhttpd reload 2>/dev/null || /etc/init.d/uhttpd restart 2>/dev/null
 
 echo "卸载完成。如需重新安装，请运行 install.sh"

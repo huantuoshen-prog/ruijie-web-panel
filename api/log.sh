@@ -1,32 +1,41 @@
 #!/bin/sh
+. "$(dirname "$0")/common.sh"
+
+panel_require_auth || exit 0
+
 echo "Content-Type: application/json; charset=utf-8"
 echo ""
-log="/var/log/ruijie-daemon.log"
+
+log="${PANEL_LOGFILE}"
 [ ! -f "$log" ] && echo '{"lines":[],"total":0}' && exit 0
-echo -n '{"lines":['
+
+tmp_log="$(mktemp)"
+tail -n 200 "$log" 2>/dev/null > "$tmp_log"
+
+esc="$(printf '\033')"
 sep=""
 count=0
-tail -n 200 "$log" 2>/dev/null | while IFS= read -r L; do
-  [ -z "$L" ] && continue
-  count=$((count+1))
-  # 去掉控制字符
-  C=$(echo "$L" | tr -d '[-]')
-  # 提取时间戳
-  T=$(echo "$C" | awk '{gsub(/\[|\]/,""); print $1, $2}' | tr -d '
-')
-  case "$T" in *-*:*:*) ;; *) T="" ;; esac
-  # 级别
-  K="INFO"
-  case "$L" in
-    *'[OK]'*)    K="OK" ;;
-    *'[WARN]'*) K="WARN" ;;
-    *'[ERROR]'*) K="ERROR" ;;
-    *'[STEP]'*) K="STEP" ;;
-    *'[ONLINE]'*) K="ONLINE" ;;
+printf '{"lines":['
+while IFS= read -r line || [ -n "$line" ]; do
+  [ -z "$line" ] && continue
+  clean_line="$(printf '%s' "$line" | sed "s/${esc}\[[0-9;]*m//g" | tr -d '\r')"
+  timestamp="$(printf '%s' "$clean_line" | sed -n 's/^\[\([^]]*\)\].*/\1/p')"
+  level="INFO"
+  case "$clean_line" in
+    *'[OK]'*) level="OK" ;;
+    *'[WARN]'*) level="WARN" ;;
+    *'[ERROR]'*) level="ERROR" ;;
+    *'[STEP]'*) level="STEP" ;;
+    *'[ONLINE]'*) level="ONLINE" ;;
   esac
-  # 消息：去掉 [ONLINE] 等标签前缀
-  M=$(echo "$C" | awk '{for(i=1;i<=NF;i++)if($i~/^[0-9]{4}-[0-9]{2}$/)break;for(i++;i<=NF;i++)printf "%s ",$i;print ""}')
-  echo "{\"ts\":\"$T\",\"level\":\"$K\",\"msg\":\"$M\"}"
+  message="$(printf '%s' "$clean_line" | sed 's/^\[[^]]*\][[:space:]]*//')"
+  printf '%s{"ts":"%s","level":"%s","msg":"%s"}' \
+    "$sep" \
+    "$(json_esc "${timestamp:-}")" \
+    "$(json_esc "$level")" \
+    "$(json_esc "$message")"
   sep=","
-done
-echo '],"total":'$count'}'
+  count=$((count + 1))
+done < "$tmp_log"
+printf '],"total":%s}' "$count"
+rm -f "$tmp_log"

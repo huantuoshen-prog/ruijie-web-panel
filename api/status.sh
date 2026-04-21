@@ -5,6 +5,8 @@
 # GET /ruijie-cgi/status
 # ========================================
 
+panel_require_auth || exit 0
+
 echo "Content-Type: application/json; charset=utf-8"
 echo ""
 

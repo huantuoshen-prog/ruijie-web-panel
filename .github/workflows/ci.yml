@@ -15,11 +15,20 @@ jobs:
 
       - name: Run shellcheck on all scripts
         run: |
-          for f in *.sh api/*.sh init.d/*; do
+          for f in *.sh api/*.sh init.d/* tests/*.sh; do
             if [ -f "$f" ]; then
               shellcheck -s bash -x -S error "$f" || exit 1
             fi
           done
+
+  test:
+    name: API Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run web panel tests
+        run: bash tests/run_tests.sh
 
   html-validation:
     name: HTML Validation
@@ -34,3 +43,10 @@ jobs:
             exit 1
           fi
           echo "index.html found"
+
+      - name: Smoke check README API paths
+        run: |
+          grep -q '/ruijie-cgi/status' README.md
+          grep -q '/ruijie-cgi/account' README.md
+          grep -q '/ruijie-cgi/settings' README.md
+          grep -q '/ruijie-cgi/log' README.md
