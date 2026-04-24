@@ -38,7 +38,7 @@
 
 ## 给 Agent 安装 / 排障
 
-- 让 Agent 帮你安装面板： [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md)
+- 让 Agent 帮你在路由器上安装面板： [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md)
 - 主脚本还没装好： [主仓库安装 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
 - 已安装后让 Agent 排障： [主仓库调试 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)
 
