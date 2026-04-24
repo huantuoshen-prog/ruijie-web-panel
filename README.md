@@ -36,6 +36,12 @@
 - 适配桌面端与移动端
 - 支持健康监听、健康日志和运行环境可视化
 
+## 给 Agent 安装 / 排障
+
+- 让 Agent 帮你安装面板： [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md)
+- 主脚本还没装好： [主仓库安装 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
+- 已安装后让 Agent 排障： [主仓库调试 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)
+
 ## 快速开始
 
 ### 3 步安装
@@ -59,9 +65,6 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 
 如果你想看手动安装、路径说明、服务注册和卸载：
 [docs/install.md](./docs/install.md)
-
-如果你想让 Agent 协助安装，直接复制：
-[docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md)
 
 ## 功能概览
 
