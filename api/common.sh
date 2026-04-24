@@ -26,6 +26,20 @@ json_esc() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/</\\u003c/g; s/>/\\u003e/g'
 }
 
+json_bool() {
+    case "$1" in
+        true|1|yes) printf 'true' ;;
+        *) printf 'false' ;;
+    esac
+}
+
+json_num_or_null() {
+    case "$1" in
+        ''|*[!0-9-]*) printf 'null' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
 PANEL_AUTH_DIR="${RUIJIE_PANEL_AUTH_DIR:-/etc/ruijie-panel}"
 PANEL_AUTH_FILE="${RUIJIE_PANEL_AUTH_FILE:-${PANEL_AUTH_DIR}/auth.conf}"
 PANEL_SESSION_DIR="${RUIJIE_PANEL_SESSION_DIR:-/tmp/ruijie-panel.sessions}"
@@ -150,4 +164,9 @@ body_get_field() {
     _key="$1"
     _body="$2"
     echo "$_body" | sed -n 's/.*'"$_key"'=\([^&]*\).*/\1/p'
+}
+
+query_get_field() {
+    _key="$1"
+    echo "${QUERY_STRING:-}" | sed -n 's/.*'"$_key"'=\([^&]*\).*/\1/p'
 }
