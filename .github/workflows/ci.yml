@@ -21,7 +21,7 @@ jobs:
             fi
           done
 
-  test:
+  api-contract:
     name: API Contract Tests
     runs-on: ubuntu-latest
     steps:
@@ -30,23 +30,42 @@ jobs:
       - name: Run web panel tests
         run: bash tests/run_tests.sh
 
-  html-validation:
-    name: HTML Validation
+  frontend:
+    name: Frontend Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check HTML exists
-        run: |
-          if [ ! -f index.html ]; then
-            echo "index.html not found"
-            exit 1
-          fi
-          echo "index.html found"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-      - name: Smoke check README API paths
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Run frontend tests
+        run: npm run test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Verify committed dist matches build output
+        run: git diff --exit-code -- dist
+
+      - name: Smoke check dist and README
         run: |
+          test -f dist/index.html
+          test -f dist/app.js
+          test -f dist/app.css
+          test -f dist/favicon.ico
           grep -q '/ruijie-cgi/status' README.md
           grep -q '/ruijie-cgi/account' README.md
           grep -q '/ruijie-cgi/settings' README.md
           grep -q '/ruijie-cgi/log' README.md
+          grep -q '/ruijie-cgi/health' README.md
+          grep -q '/ruijie-cgi/health-log' README.md
+          grep -q '/ruijie-cgi/runtime' README.md

@@ -33,14 +33,20 @@ INSTALL_MARKER="${INSTALL_TEMP}/.installed"
 
 # 需要下载的文件列表（路径相对于仓库根）
 DOWNLOAD_FILES="
-index.html
+dist/index.html
+dist/app.js
+dist/app.css
+dist/favicon.ico
 uninstall.sh
 api/auth.sh
 api/account.sh
 api/common.sh
 api/daemon.sh
+api/health-log.sh
+api/health.sh
 api/log.sh
 api/mode.sh
+api/runtime.sh
 api/settings.sh
 api/status.sh
 init.d/ruijie-panel
@@ -211,7 +217,10 @@ echo_info "安装 Web 文件到 $WEB_TARGET ..."
 mkdir -p "$WEB_TARGET"
 mkdir -p "${WEB_TARGET}/api"
 
-cp "${INSTALL_TEMP}/index.html" "${WEB_TARGET}/"
+cp "${INSTALL_TEMP}/dist/index.html" "${WEB_TARGET}/index.html"
+cp "${INSTALL_TEMP}/dist/app.js" "${WEB_TARGET}/app.js"
+cp "${INSTALL_TEMP}/dist/app.css" "${WEB_TARGET}/app.css"
+cp "${INSTALL_TEMP}/dist/favicon.ico" "${WEB_TARGET}/favicon.ico"
 cp "${INSTALL_TEMP}/uninstall.sh" "${WEB_TARGET}/"
 for _f in "${INSTALL_TEMP}/api/"*.sh; do
     [ -f "$_f" ] && cp "$_f" "${WEB_TARGET}/api/"
@@ -226,7 +235,7 @@ chmod +x "${WEB_TARGET}/uninstall.sh" 2>/dev/null || true
 # 创建 CGI 路由目录（前端调用 /ruijie-cgi/<name>）
 rm -rf "${WEB_TARGET}/ruijie-cgi"
 mkdir -p "${WEB_TARGET}/ruijie-cgi"
-for _name in auth account daemon log mode settings status; do
+for _name in auth account daemon health health-log log mode runtime settings status; do
     ln -sf "../api/${_name}.sh" "${WEB_TARGET}/ruijie-cgi/${_name}"
 done
 echo_ok "Web 文件已复制"

@@ -1,0 +1,4 @@
+node_modules/
+.vite/
+*.pyc
+mock/__pycache__/

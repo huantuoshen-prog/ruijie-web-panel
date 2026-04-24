@@ -39,6 +39,7 @@ FAKE_RUIJIE_DIR="${TMPDIR}/fake-ruijie"
 mkdir -p "${FAKE_RUIJIE_DIR}/lib"
 
 CONFIG_FILE="${HOME}/.config/ruijie/ruijie.conf"
+HEALTH_CONFIG_FILE="${HOME}/.config/ruijie/health-monitor.conf"
 cat > "$CONFIG_FILE" <<'EOF'
 USERNAME=teacher01
 PASSWORD=secret-pass
@@ -50,9 +51,23 @@ PROXY_URL_HTTPS=
 NO_PROXY_LIST=www.google.cn
 EOF
 
+cat > "$HEALTH_CONFIG_FILE" <<'EOF'
+HEALTH_MONITOR_ENABLED=true
+HEALTH_MONITOR_MODE=timed
+HEALTH_MONITOR_UNTIL=1999999999
+HEALTH_MONITOR_BASELINE_INTERVAL=900
+HEALTH_MONITOR_REDACTION=mask_password_and_session_only
+HEALTH_MONITOR_CREATED_AT=1900000000
+EOF
+
 cat > "${TMPDIR}/log.txt" <<'EOF'
 [2026-04-21 12:00:00] [INFO] 守护进程已启动
 [2026-04-21 12:00:01] [OK] 认证成功
+EOF
+
+cat > "${TMPDIR}/health.log" <<'EOF'
+{"ts":"2026-04-21 12:00:00","level":"WARN","type":"network_error","message":"在线检测失败"}
+{"ts":"2026-04-21 12:00:01","level":"ERROR","type":"auth_failed","message":"认证失败"}
 EOF
 
 printf 'PASSWORD_SHA256=%s\n' "$(printf 'panel-secret' | sha256sum | awk '{print $1}')" \
@@ -122,10 +137,103 @@ check_network() {
 }
 EOF
 
+cat > "${FAKE_RUIJIE_DIR}/lib/health.sh" <<'EOF'
+#!/bin/sh
+health_apply_defaults() {
+    HEALTH_CONFIG_FILE="${HEALTH_CONFIG_FILE:-${HOME}/.config/ruijie/health-monitor.conf}"
+    HEALTH_LOGFILE="${HEALTH_LOGFILE:-/tmp/ruijie-health.log}"
+    HEALTH_STATUS_FILE="${HEALTH_STATUS_FILE:-/tmp/ruijie-health.status.json}"
+    RUNTIME_STATUS_FILE="${RUNTIME_STATUS_FILE:-/tmp/ruijie-runtime.status.json}"
+}
+
+health_load_config() {
+    health_apply_defaults
+    HEALTH_MONITOR_ENABLED=false
+    HEALTH_MONITOR_MODE=timed
+    HEALTH_MONITOR_UNTIL=
+    HEALTH_MONITOR_BASELINE_INTERVAL=900
+    HEALTH_MONITOR_REDACTION=mask_password_and_session_only
+    HEALTH_MONITOR_CREATED_AT=
+    [ -f "$HEALTH_CONFIG_FILE" ] || return 0
+    while IFS='=' read -r key value; do
+        case "$key" in
+            HEALTH_MONITOR_ENABLED|HEALTH_MONITOR_MODE|HEALTH_MONITOR_UNTIL|HEALTH_MONITOR_BASELINE_INTERVAL|HEALTH_MONITOR_REDACTION|HEALTH_MONITOR_CREATED_AT)
+                eval "$key=\"\$value\""
+                ;;
+        esac
+    done < "$HEALTH_CONFIG_FILE"
+}
+
+health_save_config() {
+    health_apply_defaults
+    cat > "$HEALTH_CONFIG_FILE" <<CONFIG
+HEALTH_MONITOR_ENABLED=${HEALTH_MONITOR_ENABLED:-false}
+HEALTH_MONITOR_MODE=${HEALTH_MONITOR_MODE:-timed}
+HEALTH_MONITOR_UNTIL=${HEALTH_MONITOR_UNTIL:-}
+HEALTH_MONITOR_BASELINE_INTERVAL=${HEALTH_MONITOR_BASELINE_INTERVAL:-900}
+HEALTH_MONITOR_REDACTION=${HEALTH_MONITOR_REDACTION:-mask_password_and_session_only}
+HEALTH_MONITOR_CREATED_AT=${HEALTH_MONITOR_CREATED_AT:-1900000000}
+CONFIG
+}
+
+health_enable() {
+    health_apply_defaults
+    HEALTH_MONITOR_ENABLED=true
+    HEALTH_MONITOR_MODE=timed
+    HEALTH_MONITOR_UNTIL=2999999999
+    HEALTH_MONITOR_BASELINE_INTERVAL=900
+    HEALTH_MONITOR_REDACTION=mask_password_and_session_only
+    HEALTH_MONITOR_CREATED_AT=1900000000
+    health_save_config
+}
+
+health_disable() {
+    health_apply_defaults
+    health_load_config
+    HEALTH_MONITOR_ENABLED=false
+    HEALTH_MONITOR_UNTIL=
+    health_save_config
+}
+
+health_remaining_seconds() {
+    echo 12345
+}
+
+health_runtime_json() {
+    printf '{"platform":"openwrt","kernel":"5.10.0","arch":"aarch64","shell":"sh","busybox_present":true,"curl_present":true,"nohup_backend":"nohup","script_dir":"%s","config_file":"%s","daemon_pidfile":"%s","daemon_logfile":"%s","health_logfile":"%s","panel_installed":true,"panel_web_root":"/www/ruijie-panel","daemon_running":false,"health_collector_active":false}' "$RUIJIE_DIR" "$CONFIG_FILE" "$PIDFILE" "$LOGFILE" "$HEALTH_LOGFILE"
+}
+
+health_snapshot_json() {
+    printf '{"online":true,"daemon_running":false,"daemon_state":"","daemon_pid":"","username":"%s","account_type":"%s","operator":"%s"}' "$USERNAME" "$ACCOUNT_TYPE" "$OPERATOR"
+}
+
+health_write_runtime_snapshot() {
+    health_apply_defaults
+    health_runtime_json > "$RUNTIME_STATUS_FILE"
+}
+
+health_write_status_snapshot() {
+    health_apply_defaults
+    health_load_config
+    printf '{"supported":true,"enabled":%s,"mode":"%s","until":"%s","remaining_seconds":12345,"collector_active":false,"baseline_interval":900,"redaction":"%s","last_event_at":"2026-04-21 12:00:01","snapshot":%s}' "$HEALTH_MONITOR_ENABLED" "$HEALTH_MONITOR_MODE" "$HEALTH_MONITOR_UNTIL" "$HEALTH_MONITOR_REDACTION" "$(health_snapshot_json)" > "$HEALTH_STATUS_FILE"
+}
+
+health_log_json() {
+    health_apply_defaults
+    _type="${3:-}"
+    _lines="$(cat "$HEALTH_LOGFILE")"
+    if [ -n "$_type" ]; then
+        _lines="$(printf '%s\n' "$_lines" | grep "\"type\":\"$_type\"")"
+    fi
+    _count="$(printf '%s\n' "$_lines" | grep -c '"ts"' || true)"
+    printf '{"success":true,"entries":[%s],"total":%s}' "$(printf '%s\n' "$_lines" | paste -sd, -)" "$_count"
+}
+EOF
+
 chmod +x "${FAKE_RUIJIE_DIR}/ruijie.sh" "${FAKE_RUIJIE_DIR}/lib/"*.sh
 
 cp "${PROJECT_DIR}/api/"*.sh "${TMPDIR}/webroot/api/"
-for name in auth account daemon log mode settings status; do
+for name in auth account daemon health health-log log mode runtime settings status; do
     cp "${PROJECT_DIR}/api/${name}.sh" "${TMPDIR}/webroot/ruijie-cgi/${name}"
 done
 chmod +x "${TMPDIR}/webroot/api/"*.sh "${TMPDIR}/webroot/ruijie-cgi/"*
@@ -135,6 +243,12 @@ run_cgi() {
     local method="$2"
     local body="${3:-}"
     local cookie="${4:-}"
+    local query_string=""
+
+    if [ "$method" = "GET" ]; then
+        query_string="$body"
+        body=""
+    fi
 
     local content_length
     content_length="$(printf '%s' "$body" | wc -c | tr -d ' ')"
@@ -142,12 +256,17 @@ run_cgi() {
     printf '%s' "$body" | env \
         HOME="$HOME" \
         REQUEST_METHOD="$method" \
+        QUERY_STRING="$query_string" \
         CONTENT_LENGTH="$content_length" \
         HTTP_COOKIE="$cookie" \
         RUIJIE_DIR="$FAKE_RUIJIE_DIR" \
         RUIJIE_PANEL_AUTH_DIR="${TMPDIR}/panel-auth" \
         RUIJIE_PANEL_SESSION_DIR="${TMPDIR}/panel-sessions" \
         RUIJIE_PANEL_LOGFILE="${TMPDIR}/log.txt" \
+        HEALTH_CONFIG_FILE="${HEALTH_CONFIG_FILE}" \
+        HEALTH_LOGFILE="${TMPDIR}/health.log" \
+        HEALTH_STATUS_FILE="${TMPDIR}/health.status.json" \
+        RUNTIME_STATUS_FILE="${TMPDIR}/runtime.status.json" \
         bash "${TMPDIR}/webroot/ruijie-cgi/${script_name}"
 }
 
@@ -239,6 +358,27 @@ if [ -n "$PYTHON_BIN" ] && printf '%s' "$log_body" | eval "$PYTHON_BIN -c 'impor
 else
     fail "日志接口返回非法 JSON"
 fi
+
+health_payload="$(run_cgi health GET '' "$session_cookie")"
+echo "$health_payload" | grep -q '"enabled":true' \
+    && pass "健康状态接口返回 enabled=true" \
+    || fail "健康状态接口未返回 enabled=true"
+
+health_enable_payload="$(run_cgi health POST 'action=enable&duration=7d' "$session_cookie")"
+echo "$health_enable_payload" | grep -q '"enabled":true' \
+    && pass "健康状态接口支持启用监听" \
+    || fail "健康状态接口未成功启用监听"
+
+health_log_payload="$(run_cgi health-log GET 'type=auth_failed' "$session_cookie")"
+health_log_body="$(response_body "$health_log_payload")"
+printf '%s' "$health_log_body" | grep -q '"total":1' \
+    && pass "健康日志接口支持按类型筛选" \
+    || fail "健康日志接口未正确按类型筛选"
+
+runtime_payload="$(run_cgi runtime GET '' "$session_cookie")"
+echo "$runtime_payload" | grep -q '"platform":"openwrt"' \
+    && pass "运行环境接口返回平台信息" \
+    || fail "运行环境接口未返回平台信息"
 
 echo ""
 echo "=========================================="
