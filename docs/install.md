@@ -2,6 +2,14 @@
 
 ## 系统要求
 
+## 让 Agent 帮你安装
+
+如果你想把主脚本前置检查、自动安装和安装后验证一次性交给通用 Agent，直接复制：
+[AGENT_INSTALL_PROMPT.md](./AGENT_INSTALL_PROMPT.md)
+
+如果主仓库还没装好，请先使用主仓库的安装 Prompt：
+[ruijie-gdstvc-autologin / AGENT_INSTALL_PROMPT.md](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
+
 ### 硬件
 
 | 项目 | 最低要求 | 推荐 |

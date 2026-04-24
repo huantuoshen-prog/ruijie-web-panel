@@ -12,6 +12,7 @@
 - [3 步安装](#快速开始)
 - [功能概览](#功能概览)
 - [安装文档](./docs/install.md)
+- [Agent 安装 Prompt](./docs/AGENT_INSTALL_PROMPT.md)
 - [使用文档](./docs/usage.md)
 - [API 文档](./docs/api.md)
 - [故障排除](./docs/troubleshooting.md)
@@ -59,6 +60,9 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 如果你想看手动安装、路径说明、服务注册和卸载：
 [docs/install.md](./docs/install.md)
 
+如果你想让 Agent 协助安装，直接复制：
+[docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md)
+
 ## 功能概览
 
 | 页面 | 能力 |
@@ -81,6 +85,7 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 | 文档 | 说明 |
 |------|------|
 | [docs/install.md](./docs/install.md) | 系统要求、自动 / 手动 / USB 安装、服务注册、卸载 |
+| [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md) | 给通用 Agent 的现成安装 Prompt |
 | [docs/usage.md](./docs/usage.md) | 页面功能、健康监听控制、日志、主题与背景 |
 | [docs/api.md](./docs/api.md) | `/ruijie-cgi/*` 路由、鉴权与请求/响应示例 |
 | [docs/troubleshooting.md](./docs/troubleshooting.md) | 安装失败、页面打不开、认证问题、安全注意事项 |
