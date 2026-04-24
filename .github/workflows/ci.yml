@@ -56,16 +56,23 @@ jobs:
       - name: Verify committed dist matches build output
         run: git diff --exit-code -- dist
 
-      - name: Smoke check dist and README
+      - name: Smoke check dist and docs
         run: |
           test -f dist/index.html
           test -f dist/app.js
           test -f dist/app.css
           test -f dist/favicon.ico
-          grep -q '/ruijie-cgi/status' README.md
-          grep -q '/ruijie-cgi/account' README.md
-          grep -q '/ruijie-cgi/settings' README.md
-          grep -q '/ruijie-cgi/log' README.md
-          grep -q '/ruijie-cgi/health' README.md
-          grep -q '/ruijie-cgi/health-log' README.md
-          grep -q '/ruijie-cgi/runtime' README.md
+          test -f docs/install.md
+          test -f docs/usage.md
+          test -f docs/api.md
+          test -f docs/troubleshooting.md
+          test -f docs/development.md
+          grep -q './docs/install.md' README.md
+          grep -q './docs/api.md' README.md
+          grep -q '/ruijie-cgi/status' docs/api.md
+          grep -q '/ruijie-cgi/account' docs/api.md
+          grep -q '/ruijie-cgi/settings' docs/api.md
+          grep -q '/ruijie-cgi/log' docs/api.md
+          grep -q '/ruijie-cgi/health' docs/api.md
+          grep -q '/ruijie-cgi/health-log' docs/api.md
+          grep -q '/ruijie-cgi/runtime' docs/api.md
