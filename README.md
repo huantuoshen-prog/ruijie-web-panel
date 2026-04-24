@@ -377,6 +377,9 @@ sh /mnt/sda1/ruijie-web/uninstall.sh
 
 主脚本首次安装后会默认开启 3 天健康监听；后续升级不会自动重开，需要在 CLI 或面板里手动打开。
 
+如果你想把当前状态直接交给通用 agent 排障，可以使用主仓库里这份现成模板：
+[ruijie-gdstvc-autologin/docs/AGENT_DEBUG_PROMPT.md](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)
+
 ### 界面个性化
 
 #### 深色模式
