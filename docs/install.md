@@ -10,6 +10,8 @@
 如果主仓库还没装好，请先使用主仓库的安装 Prompt：
 [ruijie-gdstvc-autologin / AGENT_INSTALL_PROMPT.md](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
 
+这个 Prompt 默认假设面板部署在路由器上；如果 Agent 当前不在路由器终端，它应该先引导你切到 SSH / TTYD 终端，或要求一个可用 SSH 目标，而不是读取本地电脑的 `/etc/ruijie`。
+
 ### 硬件
 
 | 项目 | 最低要求 | 推荐 |

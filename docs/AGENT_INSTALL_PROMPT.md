@@ -8,6 +8,8 @@
 - 你希望 Agent 先检查主仓库是否安装完成，再决定是否继续安装面板
 - 你希望 Agent 自动走最短安装路径，并在安装后做页面与服务验证
 
+这个 Prompt 默认假设面板部署在路由器上，而不是本地电脑。Agent 不应该拿本地电脑的 `/etc/ruijie`、`/etc/ruijie-panel`、`/overlay/usr/www` 来判断路由器上的真实状态。
+
 ## 前置条件检查
 
 这个面板不是独立产品，安装前必须满足：
@@ -18,6 +20,8 @@
 
 如果这些条件还没满足，请先使用主仓库安装 Prompt：
 [ruijie-gdstvc-autologin / AGENT_INSTALL_PROMPT.md](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
+
+如果 Agent 当前不在路由器终端，就不要直接读取这些路径；应先让我切到路由器 SSH / TTYD 终端，或明确要求一个可用 SSH 目标。
 
 ## 精简安装 Prompt
 
@@ -36,11 +40,13 @@ https://github.com/huantuoshen-prog/ruijie-web-panel/blob/main/docs/install.md
 https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md
 
 请先检查：
-- 当前是不是 OpenWrt / iStoreOS / ImmortalWrt 路由器终端
-- `/etc/ruijie/ruijie.sh` 是否存在
-- 主脚本是否已经基本可用
+- 当前会话是不是直接运行在 OpenWrt / iStoreOS / ImmortalWrt 路由器终端
+- 如果不是，是否已经拿到可用 SSH 目标
+- 只有在路由器上，才检查 `/etc/ruijie/ruijie.sh` 是否存在、主脚本是否已经基本可用
 
 执行要求：
+- 不要用本地电脑上的 `/etc/ruijie`、`/etc/ruijie-panel`、`/overlay/usr/www` 来推断路由器状态
+- 如果你当前不是路由器终端，也没有远程执行能力，就先让我进入路由器 SSH / TTYD 终端，再继续
 - 如果主仓库没装好，停止面板安装，并明确提示我先走主仓库安装 Prompt
 - 如果主仓库已具备条件，优先使用自动安装脚本
 - 只有自动安装不可用时，才切换到手动安装或 USB 安装
@@ -69,9 +75,12 @@ https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT
 
 工作要求：
 
-1. 先确认当前环境是路由器终端，而不是普通电脑终端。
+1. 先确认当前会话是不是路由器终端，而不是普通电脑终端。
+   - 如果当前会话不是路由器终端，不要直接运行本地 `/etc/ruijie/ruijie.sh`、`test -f /etc/ruijie/ruijie.sh` 之类的命令
+   - 先让我切到路由器 SSH / TTYD 终端，或要求我提供一个可用 SSH 目标
+   - 如果你具备远程执行能力，再通过 SSH 在路由器上执行后续命令
 
-2. 先做前置检查：
+2. 前置检查必须在路由器上执行：
    - `test -f /etc/ruijie/ruijie.sh`
    - `/etc/ruijie/ruijie.sh --status`
    - 如果主脚本不存在或未完成基本配置，停止继续安装，并明确要求我先完成主仓库安装
@@ -100,6 +109,7 @@ https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT
 限制：
 - 不要把主仓库未安装的问题伪装成面板安装问题
 - 不要要求我重复提供文档里已有的安装步骤
+- 不要把本地电脑上的文件系统结果当成路由器状态
 - 不要把排障内容塞进安装流程；如果已经安装但运行异常，请单独指出那是排障问题
 ```
 
@@ -109,6 +119,10 @@ https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT
 
 ```text
 你已经完成锐捷 Web 面板安装。现在只做安装后验证，不要继续泛泛解释。
+
+如果你当前不在路由器终端：
+- 不要直接读取本地电脑上的 `/etc/ruijie`、`/etc/ruijie-panel`、`/overlay/usr/www`
+- 先让我切到路由器 SSH / TTYD 终端，或要求我提供可用 SSH 目标
 
 请执行并检查：
 1. `test -f /etc/ruijie/ruijie.sh`
