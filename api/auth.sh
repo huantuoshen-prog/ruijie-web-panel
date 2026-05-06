@@ -10,9 +10,14 @@
 METHOD="${REQUEST_METHOD:-GET}"
 
 if [ "$METHOD" = "GET" ]; then
+    _token="$(panel_current_session_token 2>/dev/null || true)"
+    if [ -n "$_token" ]; then
+        panel_refresh_session "$_token" >/dev/null 2>&1 || true
+        panel_set_session_cookie "$_token"
+    fi
     echo "Content-Type: application/json; charset=utf-8"
     echo ""
-    if panel_is_authenticated; then
+    if [ -n "$_token" ]; then
         printf '{"success":true,"authenticated":true}'
     else
         printf '{"success":true,"authenticated":false}'

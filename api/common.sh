@@ -45,6 +45,7 @@ PANEL_AUTH_FILE="${RUIJIE_PANEL_AUTH_FILE:-${PANEL_AUTH_DIR}/auth.conf}"
 PANEL_SESSION_DIR="${RUIJIE_PANEL_SESSION_DIR:-/tmp/ruijie-panel.sessions}"
 PANEL_SESSION_COOKIE="ruijie_panel_session"
 PANEL_LOGFILE="${RUIJIE_PANEL_LOGFILE:-${LOGFILE:-/var/log/ruijie-daemon.log}}"
+PANEL_SESSION_MAX_AGE="${RUIJIE_PANEL_SESSION_MAX_AGE:-2592000}"
 
 panel_hash_password() {
     _password="$1"
@@ -69,6 +70,17 @@ panel_extract_cookie() {
         | sed -n "s/^${_cookie_name}=//p" | head -n 1 | tr -d '\r\n'
 }
 
+panel_now_epoch() {
+    date +%s 2>/dev/null || echo "0"
+}
+
+panel_session_max_age() {
+    case "${PANEL_SESSION_MAX_AGE:-2592000}" in
+        ''|*[!0-9]*|0) printf '2592000' ;;
+        *) printf '%s' "$PANEL_SESSION_MAX_AGE" ;;
+    esac
+}
+
 panel_session_path() {
     _token="$1"
     case "$_token" in
@@ -79,17 +91,42 @@ panel_session_path() {
     printf '%s/%s' "$PANEL_SESSION_DIR" "$_token"
 }
 
+panel_session_expiry() {
+    _now="$(panel_now_epoch)"
+    _max_age="$(panel_session_max_age)"
+    printf '%s' "$((_now + _max_age))"
+}
+
+panel_write_session() {
+    _path="$(panel_session_path "$1")" || return 1
+    printf '%s' "$(panel_session_expiry)" > "$_path" || return 1
+    chmod 600 "$_path" 2>/dev/null || true
+}
+
 panel_session_exists() {
     _path="$(panel_session_path "$1")" || return 1
-    [ -f "$_path" ]
+    [ -f "$_path" ] || return 1
+
+    _expiry="$(tr -d '\r\n' < "$_path" 2>/dev/null)"
+    case "$_expiry" in
+        ''|*[!0-9]*)
+            return 0
+            ;;
+    esac
+
+    _now="$(panel_now_epoch)"
+    if [ "$_expiry" -le "$_now" ] 2>/dev/null; then
+        rm -f "$_path" 2>/dev/null
+        return 1
+    fi
+
+    return 0
 }
 
 panel_create_session() {
     mkdir -p "$PANEL_SESSION_DIR" || return 1
     _token="$(panel_new_session_token)" || return 1
-    _path="$(panel_session_path "$_token")" || return 1
-    : > "$_path" || return 1
-    chmod 600 "$_path" 2>/dev/null || true
+    panel_write_session "$_token" || return 1
     printf '%s' "$_token"
 }
 
@@ -98,9 +135,22 @@ panel_destroy_session() {
     rm -f "$_path" 2>/dev/null
 }
 
-panel_is_authenticated() {
+panel_current_session_token() {
     _cookie_token="$(panel_extract_cookie "$PANEL_SESSION_COOKIE")"
-    [ -n "$_cookie_token" ] && panel_session_exists "$_cookie_token"
+    [ -n "$_cookie_token" ] || return 1
+    if panel_session_exists "$_cookie_token"; then
+        printf '%s' "$_cookie_token"
+        return 0
+    fi
+    return 1
+}
+
+panel_refresh_session() {
+    panel_write_session "$1"
+}
+
+panel_is_authenticated() {
+    panel_current_session_token >/dev/null 2>&1
 }
 
 panel_new_session_token() {
@@ -113,15 +163,18 @@ panel_new_session_token() {
 
 panel_set_session_cookie() {
     _token="$1"
-    printf 'Set-Cookie: %s=%s; Path=/; HttpOnly; SameSite=Strict\r\n' "$PANEL_SESSION_COOKIE" "$_token"
+    printf 'Set-Cookie: %s=%s; Path=/; Max-Age=%s; HttpOnly; SameSite=Strict\r\n' \
+        "$PANEL_SESSION_COOKIE" "$_token" "$(panel_session_max_age)"
 }
 
 panel_clear_session_cookie() {
-    printf 'Set-Cookie: %s=deleted; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Strict\r\n' "$PANEL_SESSION_COOKIE"
+    printf 'Set-Cookie: %s=deleted; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Strict\r\n' "$PANEL_SESSION_COOKIE"
 }
 
 panel_require_auth() {
-    if panel_is_authenticated; then
+    if _token="$(panel_current_session_token)"; then
+        panel_refresh_session "$_token" >/dev/null 2>&1 || true
+        panel_set_session_cookie "$_token"
         return 0
     fi
 

@@ -38,6 +38,8 @@ Browser -> uhttpd(:8080) -> dist/index.html + /ruijie-cgi/* -> 主仓库 lib/*
 {"success": true, "authenticated": false}
 ```
 
+如果当前会话仍然有效，接口会顺带续期登录 Cookie。
+
 ### `POST /ruijie-cgi/auth`
 
 登录：
@@ -45,6 +47,8 @@ Browser -> uhttpd(:8080) -> dist/index.html + /ruijie-cgi/* -> 主仓库 lib/*
 | 参数 | 说明 |
 |------|------|
 | `password` | 面板密码 |
+
+登录成功后会返回一个持久化 Cookie，默认有效期为 `30` 天。
 
 退出：
 
