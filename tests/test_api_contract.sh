@@ -305,12 +305,27 @@ if echo "$auth_login" | grep -q 'Set-Cookie:'; then
 else
     fail "登录接口未返回会话 Cookie"
 fi
+if echo "$auth_login" | grep -q 'Max-Age=2592000'; then
+    pass "登录接口返回持久化 Cookie"
+else
+    fail "登录接口未返回持久化 Cookie"
+fi
 
 session_cookie="$(response_header_value "$auth_login" "Set-Cookie" | sed 's/;.*//')"
 if echo "$auth_login" | grep -q '"success":true'; then
     pass "登录接口返回成功 JSON"
 else
     fail "登录接口未返回成功 JSON"
+fi
+
+auth_status="$(run_cgi auth GET '' "$session_cookie")"
+echo "$auth_status" | grep -q '"authenticated":true' \
+    && pass "已登录会话查询 auth 接口时返回 authenticated=true" \
+    || fail "已登录会话查询 auth 接口时未返回 authenticated=true"
+if echo "$auth_status" | grep -q 'Set-Cookie: .*Max-Age=2592000'; then
+    pass "auth 状态查询会续期登录 Cookie"
+else
+    fail "auth 状态查询未续期登录 Cookie"
 fi
 
 second_login="$(run_cgi auth POST 'password=panel-secret')"
@@ -329,6 +344,11 @@ logout_second="$(run_cgi auth POST 'action=logout' "$second_cookie")"
 echo "$logout_second" | grep -q '"success":true' \
     && pass "退出登录接口返回成功" \
     || fail "退出登录接口未返回成功"
+if echo "$logout_second" | grep -q 'Max-Age=0'; then
+    pass "退出登录接口会清除持久化 Cookie"
+else
+    fail "退出登录接口未清除持久化 Cookie"
+fi
 
 first_status_after_second_logout="$(run_cgi status GET '' "$session_cookie")"
 echo "$first_status_after_second_logout" | grep -q '"installed":true' \
