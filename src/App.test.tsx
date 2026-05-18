@@ -61,7 +61,7 @@ describe("App bootstrap", () => {
           JSON.stringify({
             installed: true,
             online: true,
-            username: "1720240564",
+            username: "2023000000",
             operator: "DianXin",
             account_type: "student",
             daemon_running: true,
@@ -82,7 +82,7 @@ describe("App bootstrap", () => {
       if (url.includes("/ruijie-cgi/account")) {
         return new Response(
           JSON.stringify({
-            username: "1720240564",
+            username: "2023000000",
             operator: "DianXin",
             account_type: "student"
           }),

@@ -986,7 +986,7 @@ function App() {
               name="username"
               value={accountForm.username}
               onChange={handleAccountInput}
-              placeholder="例如 1720240564"
+              placeholder="例如 2023000000"
               autoComplete="username"
             />
           </label>

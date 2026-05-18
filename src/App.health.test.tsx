@@ -28,7 +28,7 @@ describe("App health monitor surfaces", () => {
         return buildJsonResponse({
           installed: true,
           online: true,
-          username: "1720240564",
+          username: "2023000000",
           operator: "DianXin",
           account_type: "student",
           daemon_running: true,
@@ -43,7 +43,7 @@ describe("App health monitor surfaces", () => {
 
       if (url.includes("/ruijie-cgi/account")) {
         return buildJsonResponse({
-          username: "1720240564",
+          username: "2023000000",
           operator: "DianXin",
           account_type: "student"
         });
@@ -86,7 +86,7 @@ describe("App health monitor surfaces", () => {
             daemon_running: true,
             daemon_state: "ONLINE",
             daemon_pid: "12345",
-            username: "1720240564",
+            username: "2023000000",
             account_type: "student",
             operator: "DianXin"
           }
@@ -152,7 +152,7 @@ describe("App health monitor surfaces", () => {
         return buildJsonResponse({
           installed: true,
           online: true,
-          username: "1720240564",
+          username: "2023000000",
           operator: "DianXin",
           account_type: "student",
           daemon_running: true,
@@ -167,7 +167,7 @@ describe("App health monitor surfaces", () => {
 
       if (url.includes("/ruijie-cgi/account")) {
         return buildJsonResponse({
-          username: "1720240564",
+          username: "2023000000",
           operator: "DianXin",
           account_type: "student"
         });

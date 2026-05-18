@@ -274,7 +274,7 @@ sh /tmp/install.sh
 {
   "installed": true,
   "online": true,
-  "username": "1720240564",
+  "username": "2023000000",
   "operator": "DianXin",
   "account_type": "student",
   "daemon_running": true,
@@ -290,7 +290,7 @@ sh /tmp/install.sh
 ### account 接口响应 (GET)
 ```json
 {
-  "username": "1720240564",
+  "username": "2023000000",
   "password": "********",
   "operator": "DianXin",
   "account_type": "student",

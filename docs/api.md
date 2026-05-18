@@ -64,7 +64,7 @@ Browser -> uhttpd(:8080) -> dist/index.html + /ruijie-cgi/* -> 主仓库 lib/*
 {
   "installed": true,
   "online": true,
-  "username": "1720240564",
+  "username": "2023000000",
   "operator": "DianXin",
   "account_type": "student",
   "daemon_running": true,

@@ -38,7 +38,7 @@ def calc_uptime(start_time):
 state = {
     "installed": True,
     "online": True,
-    "username": "1720240564",
+    "username": "2023000000",
     "operator": "DianXin",
     "account_type": "student",
     "daemon_running": True,
@@ -85,7 +85,7 @@ def init_log():
     state["last_auth"] = ts
     state["log_lines"] = [
         {"ts": ts, "level": "OK",   "msg": "守护进程已启动 (PID 12345)"},
-        {"ts": ts, "level": "INFO", "msg": "加载配置: 用户名=1720240564, 运营商=DianXin"},
+        {"ts": ts, "level": "INFO", "msg": "加载配置: 用户名=2023000000, 运营商=DianXin"},
         {"ts": ts, "level": "STEP", "msg": "开始网络检测..."},
         {"ts": ts, "level": "OK",   "msg": "网络检测正常，已连接"},
         {"ts": ts, "level": "INFO", "msg": "执行锐捷认证 (电信)..."},
@@ -490,7 +490,7 @@ if __name__ == "__main__":
     print(f"  访问: http://{HOST}:{PORT}/")
     print()
     print("  模拟场景:")
-    print("    [状态]  已连接 | 守护进程运行中 | 账号: 1720240564")
+    print("    [状态]  已连接 | 守护进程运行中 | 账号: 2023000000")
     print("    [日志]  含 1 条 XSS payload 测试行")
     print("    [账号]  保存后实时更新状态")
     print("    [守护]  启动/停止/重启有效，PID 随机生成")
