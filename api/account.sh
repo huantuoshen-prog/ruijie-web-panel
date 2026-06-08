@@ -7,6 +7,8 @@
 
 . "$(dirname "$0")/common.sh"
 
+panel_require_auth || exit 0
+
 echo "Content-Type: application/json; charset=utf-8"
 echo ""
 
@@ -33,6 +35,7 @@ if [ "$METHOD" = "POST" ]; then
         exit 0
     fi
 
+    load_config
     save_config "$_username" "$_password" "${ACCOUNT_TYPE:-student}"
     fix_config_perms
 

@@ -47,7 +47,8 @@ Web 管理面板是锐捷认证脚本的可选图形界面，提供以下功能�
 - **轻量后端**：Shell CGI，每个 API 一个独立脚本
 - **原生集成**：自动注册到 OpenWrt LuCI「服务」菜单
 - **响应式设计**：支持深色模式，自定义背景
-- **数据安全**：密码本地脱敏显示，不暴露
+- **会话保护**：首次访问需输入独立的 Web 面板密码，业务接口受会话鉴权保护
+- **数据安全**：校园网密码本地脱敏显示，不暴露
 
 ### 与主仓库的关系
 
@@ -150,6 +151,8 @@ wget -O /tmp/install.sh \
 chmod +x /tmp/install.sh && sh /tmp/install.sh
 ```
 
+> 安装过程中会要求设置一个 **Web 面板密码**。这个密码只用于打开管理面板，和校园网账号密码不是同一个东西。
+
 **第三步：打开浏览器访问**
 
 ```
@@ -159,6 +162,14 @@ http://192.168.5.1:8080/
 > 路由器 IP 可能不是 `192.168.5.1`，常见还有：
 > - `192.168.1.1` — OpenWrt 默认
 > - `192.168.31.1` — 小米路由器
+
+### 首次登录面板
+
+首次访问面板时，页面会先弹出登录框，要求输入刚才安装阶段设置的 **Web 面板密码**。
+
+- 这个密码只控制 Web 面板访问权限
+- 校园网账号密码仍然在「账号管理」页面里单独保存
+- 登录成功后，浏览器会保存会话；退出登录或会话过期后，需要重新输入面板密码
 
 ### 安装验证
 
@@ -196,6 +207,7 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 ```bash
 # 创建目录
 mkdir -p /overlay/usr/www/ruijie-web/api
+mkdir -p /etc/ruijie-panel
 
 # 下载文件
 cd /overlay/usr/www/ruijie-web
@@ -203,7 +215,7 @@ wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/in
 wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/uninstall.sh
 
 # 下载 API 脚本
-for f in account.sh common.sh daemon.sh log.sh mode.sh settings.sh status.sh; do
+for f in auth.sh account.sh common.sh daemon.sh log.sh mode.sh settings.sh status.sh; do
   wget "https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/api/$f" -O "api/$f"
 done
 
@@ -213,6 +225,21 @@ ln -sf api /overlay/usr/www/ruijie-web/ruijie-cgi
 # 设置权限
 chmod +x api/*.sh uninstall.sh
 ```
+
+然后初始化 Web 面板密码摘要：
+
+```bash
+printf '请输入 Web 面板密码: '
+stty -echo
+read PANEL_PASSWORD
+stty echo
+printf '\n'
+printf 'PASSWORD_SHA256=%s\n' "$(printf '%s' "$PANEL_PASSWORD" | sha256sum | awk '{print $1}')" > /etc/ruijie-panel/auth.conf
+chmod 600 /etc/ruijie-panel/auth.conf
+unset PANEL_PASSWORD
+```
+
+> 如果系统没有 `sha256sum`，请改用自动安装脚本，它会自动回退到 `openssl`。
 
 #### 方式三：USB 存储
 
@@ -272,12 +299,19 @@ sh /mnt/sda1/ruijie-web/uninstall.sh
 1. 停止并禁用服务
 2. 删除服务脚本
 3. 删除 Web 文件
-4. 清理 uhttpd 配置
-5. 重启 Web 服务
+4. 删除面板密码配置与登录会话
+5. 清理 uhttpd 配置
+6. 重启 Web 服务
 
 ---
 
 ## 使用指南
+
+### 面板登录与退出
+
+- 打开 `http://路由器IP:8080/` 后，先输入 **Web 面板密码** 才能进入控制台
+- 右上角的退出按钮会销毁当前登录会话，页面会重新锁定
+- 如果长时间未操作，会话过期后再次访问接口会重新要求登录
 
 ### 页面功能
 
@@ -456,12 +490,13 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 
 | 前端路径 | 实际路径 | 说明 |
 |----------|----------|------|
-| `/ruijie-cgi/status` | `/api/status.sh` | 获取系统状态 |
-| `/ruijie-cgi/account` | `/api/account.sh` | 账号管理 |
-| `/ruijie-cgi/daemon` | `/api/daemon.sh` | 守护进程控制 |
-| `/ruijie-cgi/mode` | `/api/mode.sh` | 运营商切换 |
-| `/ruijie-cgi/settings` | `/api/settings.sh` | 代理设置 |
-| `/ruijie-cgi/log` | `/api/log.sh` | 日志读取 |
+| `/ruijie-cgi/auth.sh` | `/api/auth.sh` | 面板登录状态、登录、登出 |
+| `/ruijie-cgi/status.sh` | `/api/status.sh` | 获取系统状态 |
+| `/ruijie-cgi/account.sh` | `/api/account.sh` | 账号管理 |
+| `/ruijie-cgi/daemon.sh` | `/api/daemon.sh` | 守护进程控制 |
+| `/ruijie-cgi/mode.sh` | `/api/mode.sh` | 运营商切换 |
+| `/ruijie-cgi/settings.sh` | `/api/settings.sh` | 代理设置 |
+| `/ruijie-cgi/log.sh` | `/api/log.sh` | 日志读取 |
 
 ---
 
@@ -472,10 +507,36 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 - **Base URL**: `/ruijie-cgi`
 - **Content-Type**: `application/x-www-form-urlencoded; charset=UTF-8`
 - **响应格式**: JSON
+- **会话鉴权**: 除 `auth.sh` 外的接口都要求已登录；未登录时返回 `401 Unauthorized`
+- **Cookie**: 登录成功后服务端会设置 `ruijie_panel_session`，后续请求需携带该 Cookie
 
 ### 端点列表
 
-#### GET /ruijie-cgi/status — 系统状态
+#### GET /ruijie-cgi/auth.sh — 查询登录状态
+
+检查当前浏览器是否已经登录面板。
+
+**响应示例：**
+```json
+{"success": true, "authenticated": true}
+```
+
+#### POST /ruijie-cgi/auth.sh — 面板登录 / 退出登录
+
+用于创建或销毁 Web 面板会话。
+
+**请求参数：**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| password | string | 否 | 面板密码；登录时传入 |
+| action | string | 否 | 传 `logout` 表示退出当前会话 |
+
+**响应示例：**
+```json
+{"success": true, "message": "登录成功"}
+```
+
+#### GET /ruijie-cgi/status.sh — 系统状态
 
 获取系统当前状态。
 
@@ -497,7 +558,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 }
 ```
 
-#### GET /ruijie-cgi/account — 读取账号
+#### GET /ruijie-cgi/account.sh — 读取账号
 
 获取当前账号信息（密码脱敏）。
 
@@ -512,7 +573,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 }
 ```
 
-#### POST /ruijie-cgi/account — 保存账号
+#### POST /ruijie-cgi/account.sh — 保存账号
 
 保存新的账号信息。
 
@@ -520,7 +581,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | username | string | 是 | 用户名 |
-| password | string | 是 | 密码 |
+| password | string | 是 | 校园网密码 |
 | operator | string | 否 | 运营商（DianXin/LianTong）|
 
 **响应示例：**
@@ -528,7 +589,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 {"success": true, "message": "账号已保存"}
 ```
 
-#### POST /ruijie-cgi/daemon — 守护进程控制
+#### POST /ruijie-cgi/daemon.sh — 守护进程控制
 
 控制守护进程状态。
 
@@ -546,7 +607,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 {"success": false, "message": "启动失败，守护进程可能已在运行"}
 ```
 
-#### POST /ruijie-cgi/mode — 运营商切换
+#### POST /ruijie-cgi/mode.sh — 运营商切换
 
 切换网络运营商。
 
@@ -560,7 +621,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 {"success": true, "message": "已切换到DianXin，网络已连接", "operator": "DianXin"}
 ```
 
-#### GET /ruijie-cgi/settings — 读取代理设置
+#### GET /ruijie-cgi/settings.sh — 读取代理设置
 
 获取当前代理配置。
 
@@ -572,7 +633,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 }
 ```
 
-#### POST /ruijie-cgi/settings — 保存代理设置
+#### POST /ruijie-cgi/settings.sh — 保存代理设置
 
 保存代理配置。
 
@@ -587,7 +648,7 @@ LuCI → 服务 → 锐捷 Web 管理面板 → 打开
 {"success": true, "message": "设置已保存"}
 ```
 
-#### GET /ruijie-cgi/log — 读取日志
+#### GET /ruijie-cgi/log.sh — 读取日志
 
 获取认证日志。
 
@@ -669,6 +730,35 @@ sh /tmp/install.sh
 2. 尝试换用 Chrome / Edge / Firefox
 3. 检查浏览器控制台是否有错误
 
+### 提示「面板密码未初始化」
+
+**原因**：`/etc/ruijie-panel/auth.conf` 不存在，或安装时尚未完成密码初始化。
+
+**解决方法**：
+```bash
+# 重新运行安装脚本，按提示初始化 Web 面板密码
+sh /tmp/install.sh
+```
+
+### 忘记 Web 面板密码
+
+**原因**：面板密码和校园网账号密码是分开的，忘记后无法通过浏览器进入控制台。
+
+**解决方法**：
+```bash
+rm -f /etc/ruijie-panel/auth.conf
+sh /tmp/install.sh
+```
+
+### 一直要求重新输入面板密码
+
+**可能原因**：浏览器禁止了 Cookie，或你刚刚点击了右上角的退出按钮，当前会话已经被销毁。
+
+**解决方法**：
+1. 确认浏览器允许保存站点 Cookie
+2. 重新输入 Web 面板密码登录
+3. 如仍失败，删除旧密码配置后重新初始化面板密码
+
 ### 认证失败
 
 如果面板显示网络离线，请检查：
@@ -704,13 +794,14 @@ ruijie-web-panel/
 ├── install.sh              # 安装脚本
 ├── uninstall.sh            # 卸载脚本
 ├── api/                    # CGI API 脚本
-│   ├── common.sh           # 公共函数（JSON 转义、POST body 解析等）
-│   ├── status.sh           # GET /ruijie-cgi/status
-│   ├── account.sh          # GET/POST /ruijie-cgi/account
-│   ├── daemon.sh           # POST /ruijie-cgi/daemon
-│   ├── mode.sh             # POST /ruijie-cgi/mode
-│   ├── settings.sh         # GET/POST /ruijie-cgi/settings
-│   └── log.sh              # GET /ruijie-cgi/log
+│   ├── common.sh           # 公共函数（会话、JSON 转义、POST body 解析等）
+│   ├── auth.sh             # GET/POST /ruijie-cgi/auth.sh
+│   ├── status.sh           # GET /ruijie-cgi/status.sh
+│   ├── account.sh          # GET/POST /ruijie-cgi/account.sh
+│   ├── daemon.sh           # POST /ruijie-cgi/daemon.sh
+│   ├── mode.sh             # POST /ruijie-cgi/mode.sh
+│   ├── settings.sh         # GET/POST /ruijie-cgi/settings.sh
+│   └── log.sh              # GET /ruijie-cgi/log.sh
 ├── init.d/                 # OpenWrt init.d 脚本
 │   └── ruijie-panel       # 服务管理脚本
 ├── mock/                   # 测试用 mock 数据
@@ -729,6 +820,8 @@ ruijie-web-panel/
 #!/bin/sh
 . "$(dirname "$0")/common.sh"
 
+panel_require_auth || exit 0
+
 echo "Content-Type: application/json; charset=utf-8"
 echo ""
 
@@ -739,14 +832,11 @@ printf '{"success":true,"message":"示例"}'
 2. 在 `index.html` 中添加前端调用：
 ```javascript
 async function callExample() {
-  return api('/example');
+  return api('/example.sh');
 }
 ```
 
-3. 创建 CGI 软链接（安装时自动处理）：
-```bash
-ln -sf api/example.sh /path/to/ruijie-web/ruijie-cgi/example
-```
+3. `ruijie-cgi` 在安装时会直接软链到 `api/` 目录，所以新增脚本放进 `api/` 后，会自动以 `/ruijie-cgi/example.sh` 形式暴露，无需单独再建软链接。
 
 ### 修改前端
 

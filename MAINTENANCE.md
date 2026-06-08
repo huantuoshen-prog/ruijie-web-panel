@@ -42,18 +42,19 @@ ruijie-web-panel/
 ├── install.sh              # 安装脚本
 ├── uninstall.sh            # 卸载脚本
 ├── api/                    # CGI API 脚本
-│   ├── common.sh           # 公共函数（JSON 转义、POST body 解析等）
-│   ├── status.sh           # GET /ruijie-cgi/status → 系统状态
-│   ├── account.sh          # GET/POST /ruijie-cgi/account → 账号管理
-│   ├── daemon.sh           # POST /ruijie-cgi/daemon → 守护进程控制
-│   ├── mode.sh             # 账号类型切换
-│   ├── settings.sh         # 代理设置
-│   └── log.sh              # 日志读取
+│   ├── common.sh           # 公共函数（会话、JSON 转义、POST body 解析等）
+│   ├── auth.sh             # GET/POST /ruijie-cgi/auth.sh
+│   ├── status.sh           # GET /ruijie-cgi/status.sh → 系统状态
+│   ├── account.sh          # GET/POST /ruijie-cgi/account.sh → 账号管理
+│   ├── daemon.sh           # POST /ruijie-cgi/daemon.sh → 守护进程控制
+│   ├── mode.sh             # POST /ruijie-cgi/mode.sh → 运营商切换
+│   ├── settings.sh         # GET/POST /ruijie-cgi/settings.sh → 代理设置
+│   └── log.sh              # GET /ruijie-cgi/log.sh → 日志读取
 ├── init.d/
 │   └── ruijie-panel        # OpenWrt init.d 服务脚本
 └── mock/                   # 模拟数据（开发测试用）
     ├── server.py           # 模拟服务器
-    ├── account.json         # 模拟账号数据
+    ├── account.json        # 模拟账号数据
     ├── status.json         # 模拟状态数据
     └── log.json            # 模拟日志数据
 ```
@@ -62,12 +63,13 @@ ruijie-web-panel/
 
 | 端点 | 方法 | 说明 | 返回 |
 |------|------|------|------|
-| `/ruijie-cgi/status` | GET | 获取系统状态 | JSON: installed, online, username, daemon_running, daemon_pid, daemon_state, last_auth, version |
-| `/ruijie-cgi/account` | GET | 读取账号信息（密码脱敏） | JSON: username, password(掩码), operator, account_type, proxy_url |
-| `/ruijie-cgi/account` | POST | 保存账号信息 | JSON: success, message |
-| `/ruijie-cgi/daemon` | POST | 守护进程控制 | JSON: success, pid, message |
-| `/ruijie-cgi/log` | GET | 读取日志 | JSON: logs[], level filter |
-| `/ruijie-cgi/settings` | GET/POST | 代理设置 | JSON |
+| `/ruijie-cgi/auth.sh` | GET/POST | 面板登录状态、登录、登出 | JSON: success, authenticated/message |
+| `/ruijie-cgi/status.sh` | GET | 获取系统状态 | JSON: installed, online, username, daemon_running, daemon_pid, daemon_state, last_auth, version |
+| `/ruijie-cgi/account.sh` | GET | 读取账号信息（密码脱敏） | JSON: username, password(掩码), operator, account_type, proxy_url |
+| `/ruijie-cgi/account.sh` | POST | 保存账号信息 | JSON: success, message |
+| `/ruijie-cgi/daemon.sh` | POST | 守护进程控制 | JSON: success, pid, message |
+| `/ruijie-cgi/log.sh` | GET | 读取日志 | JSON: logs[], level filter |
+| `/ruijie-cgi/settings.sh` | GET/POST | 代理设置 | JSON |
 
 ### CGI 路由配置
 - Web 根目录: `/overlay/usr/www/ruijie-web/`（持久化）
@@ -106,6 +108,7 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 ```
 
 安装脚本会自动：
+- 初始化 `/etc/ruijie-panel/auth.conf`，生成或设置 Web 面板密码摘要
 - 复制 Web 文件到持久化存储路径（`/overlay/` 或 USB）
 - 注册系统服务到 LuCI「服务」菜单
 - 启动面板并输出访问地址
@@ -254,11 +257,12 @@ sh /tmp/install.sh
 ## 安装脚本详解
 
 ### install.sh 主要功能
-1. **检测 OpenWrt 环境**: 检查 `/etc/openwrt_release` 或 `ubus` 命令
+1. **检测 OpenWrt 环境**: 检查 uhttpd 是否可用
 2. **确定安装路径**: 优先使用 `/overlay/usr/www/ruijie-web/`（持久化）
-3. **复制文件**: index.html, api/, init.d/
-4. **注册服务**: `/etc/init.d/ruijie-panel enable`
-5. **配置 uhttpd**: 添加 CGI 路由 `/ruijie-cgi/`
+3. **初始化面板密码**: 生成或交互式设置 `/etc/ruijie-panel/auth.conf`
+4. **复制文件**: index.html, api/, init.d/
+5. **注册服务**: `/etc/init.d/ruijie-panel enable`
+6. **配置 uhttpd**: 添加 CGI 路由 `/ruijie-cgi/`
 
 ### 路径持久化策略
 - **优先**: `/overlay/usr/www/` — 重启不丢失

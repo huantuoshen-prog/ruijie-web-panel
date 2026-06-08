@@ -3,890 +3,942 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>锐捷认证 · Web 管理面板</title>
+<title>锐捷认证 · 管理面板</title>
 <script>!function(){try{var t=localStorage.getItem('theme');if(t===''&&window.matchMedia('(prefers-color-scheme:dark)').matches||t==='dark')document.documentElement.setAttribute('data-theme','dark');else if(t==='light')document.documentElement.removeAttribute('data-theme')}catch(e){}}();</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  /* ── 背景层级 ── */
-  --bg-base:#F5F4EF;
-  --bg-surface:#FAFAF8;
-  --bg-elevated:#FFFFFF;
-  --bg-input:#FFFFFF;
-  --bg-hover:rgba(0,0,0,.04);
-  --bg-active:rgba(0,0,0,.07);
-  /* ── 文字层级 ── */
-  --text-primary:#1A1917;
-  --text-secondary:#6B6860;
-  --text-tertiary:#9C9A94;
-  --text-inverse:#FFFFFF;
-  /* ── 边框层级 ── */
-  --border-subtle:rgba(0,0,0,.06);
-  --border-default:rgba(0,0,0,.12);
-  --border-strong:rgba(0,0,0,.20);
-  --border-focus:#C96A2A;
-  /* ── 品牌色（Claude 暖橙）── */
-  --brand-primary:#C96A2A;
-  --brand-light:#F0E0D0;
-  --brand-dark:#9E4F1A;
-  /* ── 功能色 ── */
-  --success:#2E7D52;--success-light:#E8F5EE;
-  --warning:#B45309;--warning-light:#FEF3C7;
-  --error:#B91C1C;--error-light:#FEE2E2;
-  --info:#1D4ED8;--info-light:#DBEAFE;
-  /* ── 圆角系统 ── */
+  --bg-base:#F5F4EF;--bg-surface:#FAFAF8;--bg-elevated:#FFFFFF;--bg-input:#FFFFFF;
+  --bg-hover:rgba(0,0,0,.04);--bg-active:rgba(0,0,0,.07);--bg-sidebar:#EFEDE8;
+  --text-primary:#1A1917;--text-secondary:#6B6860;--text-tertiary:#9C9A94;--text-inverse:#FFFFFF;
+  --border-subtle:rgba(0,0,0,.06);--border-default:rgba(0,0,0,.12);--border-strong:rgba(0,0,0,.20);--border-focus:#C96A2A;
+  --brand-primary:#C96A2A;--brand-light:#F0E0D0;--brand-dark:#9E4F1A;
+  --success:#2E7D52;--success-light:#E8F5EE;--warning:#B45309;--warning-light:#FEF3C7;--error:#B91C1C;--error-light:#FEE2E2;--info:#1D4ED8;--info-light:#DBEAFE;
   --radius-xs:4px;--radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-xl:16px;
-  /* ── 阴影（轻柔和）── */
-  --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:0 4px 6px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.04);
-  --shadow-input-focus:0 0 0 3px rgba(201,106,42,.15);
-  /* ── 字体 ── */
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);--shadow-md:0 4px 6px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.04);--shadow-input-focus:0 0 0 3px rgba(201,106,42,.15);
   --font-ui:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
   --font-mono:ui-monospace,Consolas,"Microsoft YaHei",monospace;
-  /* ── 字号 ── */
   --t-xs:12px;--t-sm:14px;--t-base:16px;--t-lg:18px;--t-xl:20px;
-  /* ── 间距 ── */
-  --space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;
-  /* ── 动效 ── */
+  --space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;
   --duration-fast:100ms;--duration-base:150ms;--duration-slow:250ms;
   --ease-default:cubic-bezier(0.16,1,0.3,1);
-  /* ── 组件特定 ── */
-  --field-bg:#FFFFFF;--field-border:rgba(0,0,0,.12);
-  --btn-s-bg:#FFFFFF;--btn-s-border:rgba(0,0,0,.12);
-  --log-chip-bg:#FFFFFF;--log-chip-border:rgba(0,0,0,.12);
-  --about-bg:#FAFAF8;
-  --log-area-bg:#FAFAF8;
-  --mini-stat-bg:#F5F4EF;
-  --toast-bg:#FFFFFF;
-  --banner-bg:#FEF3C7;
-  --header-bg:rgba(255,255,255,.92);
-  --log-l-OK-bg:#E8F5EE;--log-l-OK-color:#2E7D52;
-  --log-l-INFO-bg:#DBEAFE;--log-l-INFO-color:#1D4ED8;
-  --log-l-STEP-bg:rgba(29,78,216,.07);--log-l-STEP-color:#1D4ED8;
-  --log-l-WARN-bg:#FEF3C7;--log-l-WARN-color:#B45309;
-  --log-l-ERROR-bg:#FEE2E2;--log-l-ERROR-color:#B91C1C;
+  --sidebar-width:260px;
   --bg-image:none;
+  --ui-opacity:1;
 }
 html{font-family:var(--font-ui);font-size:var(--t-base);color:var(--text-primary);-webkit-font-smoothing:antialiased}
-body{
-  min-height:100vh;
-  background:var(--bg-base) var(--bg-image) center/cover no-repeat fixed;
-  transition:background var(--duration-slow),color var(--duration-base);
-}
+body{min-height:100vh;background:var(--bg-base) var(--bg-image) center/cover no-repeat fixed;transition:background var(--duration-slow),color var(--duration-base)}
 
 /* ===== DARK MODE ===== */
 [data-theme="dark"]{
-  --bg-base:#1C1917;--bg-surface:#211F1C;--bg-elevated:#292522;--bg-input:#292522;
+  --bg-base:#1C1917;--bg-surface:#211F1C;--bg-elevated:#292522;--bg-input:#292522;--bg-sidebar:#161513;
   --bg-hover:rgba(255,255,255,.05);--bg-active:rgba(255,255,255,.09);
   --text-primary:#E8E6E1;--text-secondary:#9C9A93;--text-tertiary:#6B6860;
   --border-subtle:rgba(255,255,255,.06);--border-default:rgba(255,255,255,.10);--border-strong:rgba(255,255,255,.18);
   --brand-primary:#D4784E;--brand-dark:#E8906A;
-  --shadow-sm:0 1px 3px rgba(0,0,0,.30),0 1px 2px rgba(0,0,0,.20);
-  --shadow-md:0 4px 6px rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.25);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.30),0 1px 2px rgba(0,0,0,.20);--shadow-md:0 4px 6px rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.25);
   --shadow-input-focus:0 0 0 3px rgba(212,120,78,.20);
-  --field-bg:#292522;--field-border:rgba(255,255,255,.10);
-  --btn-s-bg:#292522;--btn-s-border:rgba(255,255,255,.10);
-  --log-chip-bg:#292522;--log-chip-border:rgba(255,255,255,.10);
-  --about-bg:#211F1C;
-  --log-area-bg:#1C1917;
-  --mini-stat-bg:#211F1C;
-  --toast-bg:#211F1C;
-  --banner-bg:rgba(180,83,9,.15);
-  --header-bg:rgba(28,25,23,.92);
-  --log-l-OK-bg:rgba(46,125,82,.20);--log-l-OK-color:#6ee7a0;
-  --log-l-INFO-bg:rgba(29,78,216,.20);--log-l-INFO-color:#93c5fd;
-  --log-l-STEP-bg:rgba(29,78,216,.15);--log-l-STEP-color:#93c5fd;
-  --log-l-WARN-bg:rgba(180,83,9,.20);--log-l-WARN-color:#fcd34d;
-  --log-l-ERROR-bg:rgba(185,28,28,.20);--log-l-ERROR-color:#fca5a5;
 }
 
-/* ===== HEADER ===== */
-.header{
-  background-color:var(--header-bg);
+/* ===== LAYOUT ===== */
+.layout{display:flex;min-height:100vh}
+.main{flex:1;margin-left:var(--sidebar-width);display:flex;flex-direction:column}
+
+/* ===== SIDEBAR ===== */
+.sidebar{
+  width:var(--sidebar-width);height:100vh;position:fixed;left:0;top:0;
+  background:color-mix(in srgb,var(--bg-sidebar) calc(var(--ui-opacity)*100%),transparent);
+  border-right:1px solid var(--border-subtle);
+  display:flex;flex-direction:column;z-index:50;
+  transition:background var(--duration-slow);
+}
+.sidebar-header{padding:var(--space-4);border-bottom:1px solid var(--border-subtle)}
+.sidebar-brand{display:flex;align-items:center;gap:var(--space-3)}
+.brand-icon{
+  width:36px;height:36px;background:var(--brand-primary);border-radius:var(--radius-md);
+  display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;
+}
+.brand-icon svg{width:20px;height:20px}
+.brand-text{overflow:hidden}
+.brand-title{font-size:var(--t-base);font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub{font-size:var(--t-xs);color:var(--text-tertiary)}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:var(--space-2)}
+.nav-item{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-3) var(--space-3);
+  border-radius:var(--radius-md);cursor:pointer;
+  color:var(--text-secondary);font-size:var(--t-sm);
+  transition:background var(--duration-base),color var(--duration-base);
+  user-select:none;
+}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--bg-active);color:var(--text-primary);font-weight:500}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-divider{height:1px;background:var(--border-subtle);margin:var(--space-3) var(--space-3)}
+
+.sidebar-footer{padding:var(--space-3);border-top:1px solid var(--border-subtle)}
+.user-info{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2)}
+.user-avatar{
+  width:32px;height:32px;background:var(--brand-primary);border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:var(--t-sm);font-weight:600;
+}
+.user-name{font-size:var(--t-sm);color:var(--text-primary);font-weight:500}
+.user-status{font-size:var(--t-xs);color:var(--text-tertiary)}
+
+/* ===== TOPBAR ===== */
+.topbar{
+  height:56px;padding:0 var(--space-6);
+  background:color-mix(in srgb,var(--bg-elevated) calc(var(--ui-opacity)*100%),transparent);
   border-bottom:1px solid var(--border-subtle);
-  padding:0 var(--space-6);height:60px;
-  display:flex;align-items:center;gap:var(--space-4);
-  position:sticky;top:0;z-index:100;
-  transition:background-color var(--duration-slow),border-color var(--duration-base);
-  backdrop-filter:blur(20px) saturate(180%);
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:40;
+  transition:background var(--duration-slow),border-color var(--duration-base);
 }
-@supports not (backdrop-filter:blur(1px)){.header{background-color:var(--bg-elevated)}}
-[data-theme="dark"] .header{border-bottom-color:var(--border-subtle)}
-.header-icon{
-  width:36px;height:36px;
-  background:var(--brand-primary);border-radius:var(--radius-md);
-  display:flex;align-items:center;justify-content:center;
-  color:#fff;box-shadow:var(--shadow-sm);
-}
-.header-icon svg{width:20px;height:20px}
-.header-text{flex:1}
-.header-title{font-size:var(--t-lg);font-weight:600;line-height:1.2;letter-spacing:-.01em}
-.header-sub{font-size:var(--t-xs);color:var(--text-secondary);margin-top:2px}
-.header-tag{font-size:var(--t-xs);color:var(--text-tertiary);background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);padding:4px 12px}
-[data-theme="dark"] .header-tag{background:var(--bg-active);border-color:var(--border-default);color:var(--text-tertiary)}
-.header-actions{display:flex;align-items:center;gap:var(--space-2)}
+.topbar-title{font-size:var(--t-base);font-weight:600;color:var(--text-primary)}
+.topbar-actions{display:flex;align-items:center;gap:var(--space-1)}
+.topbar-actions .icon-btn,.topbar-actions .theme-btn{border:none}
+.topbar-actions .sep{width:1px;height:24px;background:var(--border-default);margin:0 var(--space-2)}
 
-/* ===== THEME TOGGLE ===== */
-.theme-btn{
-  width:34px;height:34px;border-radius:var(--radius-md);border:1px solid var(--border-default);
-  background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  color:var(--text-secondary);transition:all var(--duration-base);padding:0;
+/* 图标按钮 Ghost 风格 */
+.icon-btn,.theme-btn{
+  width:40px;height:40px;border-radius:var(--radius-md);
+  border:none;background:transparent;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-secondary);transition:all var(--duration-base);
 }
-.theme-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
-[data-theme="dark"] .theme-btn:hover{background:var(--bg-active)}
-.theme-btn svg{width:17px;height:17px}
+.icon-btn svg,.theme-btn svg{width:18px;height:18px}
+.icon-btn:hover,.theme-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.icon-btn:active,.theme-btn:active{transform:scale(0.97)}
+
 .theme-btn .moon{display:none}
 [data-theme="dark"] .theme-btn .sun{display:none}
 [data-theme="dark"] .theme-btn .moon{display:block}
 
-/* ===== MAIN ===== */
-.main{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-6) var(--space-12)}
+/* ===== CONTENT ===== */
+.content{flex:1;padding:var(--space-6);overflow-y:auto}
 
-/* ===== BANNER ===== */
-.banner{display:none;background-color:var(--banner-bg);border:1px solid rgba(180,83,9,.18);border-radius:var(--radius-lg);padding:var(--space-4) var(--space-5);margin-bottom:var(--space-5);transition:background-color var(--duration-slow)}
-.banner.on{display:block}
-.banner-t{font-size:var(--t-base);font-weight:600;color:var(--warning);margin-bottom:6px}
-.banner p{font-size:var(--t-sm);color:var(--text-secondary);margin-bottom:3px;line-height:1.7}
-.banner code{background:var(--bg-elevated);border:1px solid var(--border-default);padding:2px 8px;border-radius:5px;font-size:var(--t-xs);color:var(--brand-primary);font-family:var(--font-mono)}
-
-/* ===== TOP ROW ===== */
-.top-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)}
-@media(max-width:860px){.top-row{grid-template-columns:1fr}}
-
-/* ===== CARD ===== */
+/* ===== CARDS ===== */
 .card{
-  background-color:var(--bg-surface);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  overflow:hidden;
-  transition:background-color var(--duration-slow),box-shadow var(--duration-base);
-  border:1px solid var(--border-subtle);
+  background:color-mix(in srgb,var(--bg-surface) calc(var(--ui-opacity)*100%),transparent);
+  border:1px solid var(--border-subtle);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);overflow:hidden;
+  transition:box-shadow var(--duration-base),background var(--duration-slow);
 }
 .card:hover{box-shadow:var(--shadow-md)}
-.card-head{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-subtle)}
-.card-icon{width:34px;height:34px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.card-icon svg{width:18px;height:18px}
-.card-label{font-size:var(--t-xs);font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em}
-.card-head-r{margin-left:auto;display:flex;gap:6px;align-items:center}
-.card-action{font-size:var(--t-xs);color:var(--brand-primary);cursor:pointer;padding:3px 8px;border-radius:5px;transition:background var(--duration-fast)}
-.card-action:hover{background:var(--bg-hover)}
-.card-body{padding:var(--space-4) var(--space-5)}
+.card-header{
+  display:flex;align-items:center;gap:var(--space-3);
+  padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-subtle);
+}
+.card-icon{
+  width:32px;height:32px;border-radius:var(--radius-md);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.card-icon svg{width:16px;height:16px}
+.card-title{font-size:var(--t-xs);font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em}
+.card-body{padding:var(--space-5)}
 
-/* ===== STAT ===== */
-.stat-row{display:flex;align-items:center;gap:var(--space-2);padding:9px 0;border-bottom:1px solid var(--border-subtle)}
-.stat-row:last-child{border-bottom:none;padding-bottom:0}
-.stat-row:first-child{padding-top:0}
-.stat-l{font-size:var(--t-sm);color:var(--text-secondary);flex:0 0 auto}
-.stat-r{font-size:var(--t-base);font-weight:600;margin-left:auto;text-align:right}
-.stat-r.ok{color:var(--success)}.stat-r.err{color:var(--error)}.stat-r.muted{color:var(--text-tertiary);font-weight:400}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex-shrink:0}
+/* ===== STAT ROW ===== */
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--border-subtle)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{font-size:var(--t-sm);color:var(--text-secondary)}
+.stat-value{font-size:var(--t-base);font-weight:600;color:var(--text-primary)}
+.stat-value.ok{color:var(--success)}.stat-value.err{color:var(--error)}
+.stat-value.muted{color:var(--text-tertiary);font-weight:400}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .dot-g{background:var(--success)}.dot-r{background:var(--error)}.dot-gy{background:var(--text-tertiary)}
 
-/* ===== MINI STAT ===== */
-.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:14px}
-.mini-stat{background-color:var(--mini-stat-bg);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 10px;text-align:center;transition:background-color var(--duration-slow),border-color var(--duration-base)}
-.mini-stat-l{font-size:var(--t-xs);color:var(--text-tertiary);margin-bottom:6px}
-.mini-stat-v{font-size:var(--t-xl);font-weight:700;color:var(--text-primary)}
-.mini-stat-v.ok{color:var(--success)}.mini-stat-v.err{color:var(--error)}
+/* ===== MINI STATS ===== */
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3);margin-bottom:var(--space-4)}
+.mini-stat{background:var(--bg-base);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:var(--space-3);text-align:center;transition:background var(--duration-slow)}
+.mini-stat-label{font-size:var(--t-xs);color:var(--text-tertiary);margin-bottom:4px}
+.mini-stat-value{font-size:var(--t-xl);font-weight:700;color:var(--text-primary)}
+.mini-stat-value.ok{color:var(--success)}.mini-stat-value.err{color:var(--error)}
 
-/* ===== RIGHT COLUMN STACK ===== */
-.ctrl-stack{display:flex;flex-direction:column;gap:var(--space-4)}
-
-/* ===== BTN ===== */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 18px;border-radius:var(--radius-md);border:1px solid transparent;cursor:pointer;font-size:var(--t-sm);font-weight:500;font-family:var(--font-ui);transition:all var(--duration-base);white-space:nowrap;-webkit-user-select:none}
+/* ===== BUTTONS ===== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  height:36px;padding:0 16px;border-radius:var(--radius-md);
+  border:1px solid transparent;cursor:pointer;font-size:var(--t-sm);font-weight:500;
+  font-family:var(--font-ui);transition:all var(--duration-base);white-space:nowrap;
+}
 .btn:active:not(:disabled){transform:scale(.97)}.btn:disabled{opacity:.35;cursor:not-allowed}
 .btn-p{background:var(--brand-primary);color:#fff}.btn-p:hover:not(:disabled){background:var(--brand-dark)}
-.btn-p:active:not(:disabled){background:var(--brand-dark)}
-.btn-s{background-color:var(--btn-s-bg);color:var(--text-primary);border-color:var(--btn-s-border);transition:background-color var(--duration-slow),border-color var(--duration-base)}.btn-s:hover:not(:disabled){background:var(--bg-hover);border-color:var(--border-strong)}
-.btn-g{background:transparent;color:var(--success);border-color:var(--success)}.btn-g:hover:not(:disabled){background:var(--success-light)}
-.btn-r{background:transparent;color:var(--error);border-color:var(--error)}.btn-r:hover:not(:disabled){background:var(--error-light)}
+.btn-s{background:var(--bg-surface);color:var(--text-primary);border-color:var(--border-default)}
+.btn-s:hover:not(:disabled){background:var(--bg-hover);border-color:var(--border-strong)}
+.btn-g{background:transparent;color:var(--success);border-color:var(--success)}
+.btn-g:hover:not(:disabled){background:var(--success-light)}
+.btn-r{background:transparent;color:var(--error);border-color:var(--error)}
+.btn-r:hover:not(:disabled){background:var(--error-light)}
 .btn-row{display:flex;gap:var(--space-2);flex-wrap:wrap}
 
 /* ===== FORM ===== */
-.field{margin-bottom:var(--space-3)}.field:last-child{margin-bottom:0}
-.field-label{display:block;font-size:var(--t-sm);font-weight:500;color:var(--text-primary);margin-bottom:6px}
-.field-hint{display:block;font-size:var(--t-xs);color:var(--text-tertiary);margin-top:6px}
-.field-in{width:100%;min-height:52px;padding:14px 16px;background-color:var(--field-bg);border:1px solid var(--field-border);border-radius:var(--radius-xl);color:var(--text-primary);font-size:var(--t-base);font-family:var(--font-ui);transition:background-color var(--duration-slow),border-color var(--duration-base),box-shadow var(--duration-base)}
+.field{margin-bottom:var(--space-4)}.field:last-child{margin-bottom:0}
+.field-label{display:block;font-size:var(--t-sm);font-weight:500;color:var(--text-primary);margin-bottom:var(--space-2)}
+.field-in{
+  width:100%;min-height:48px;padding:12px 16px;
+  background:var(--bg-input);border:1px solid var(--border-default);
+  border-radius:var(--radius-xl);color:var(--text-primary);font-size:var(--t-base);font-family:var(--font-ui);
+  transition:border-color var(--duration-base),box-shadow var(--duration-base);
+}
 .field-in::placeholder{color:var(--text-tertiary)}
 .field-in:focus{outline:none;border-color:var(--border-focus);box-shadow:var(--shadow-input-focus)}
 .field-sel{
-  cursor:pointer;
-  appearance:none;
-  -webkit-appearance:none;
-  padding-right:36px;
+  cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:40px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236B6860' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;
-  background-position:right 14px center;
-  background-color:var(--field-bg);
-  transition:background-color var(--duration-slow),border-color var(--duration-base);
+  background-repeat:no-repeat;background-position:right 14px center;
 }
-[data-theme="dark"] .field-sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239C9A93' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")}
+.field-hint{font-size:var(--t-xs);color:var(--text-tertiary);margin-top:var(--space-2)}
 
-/* ===== LOG (FULL WIDTH) ===== */
-.log-card{
-  background-color:var(--bg-surface);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  overflow:hidden;
-  margin-bottom:var(--space-4);
-  transition:background-color var(--duration-slow);
-  border:1px solid var(--border-subtle);
+/* ===== LOG ===== */
+.log-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--border-subtle);margin-bottom:var(--space-3)}
+.log-title{display:flex;align-items:center;gap:var(--space-2);font-size:var(--t-sm);font-weight:600;color:var(--text-primary)}
+.log-body{padding:var(--space-4)}
+.log-filters{display:flex;gap:var(--space-2);margin-bottom:var(--space-3);flex-wrap:wrap}
+.log-chip{
+  height:28px;padding:0 10px;border-radius:var(--radius-sm);
+  border:1px solid var(--border-default);background:transparent;
+  color:var(--text-secondary);font-size:var(--t-xs);font-weight:500;font-family:var(--font-ui);
+  cursor:pointer;transition:all var(--duration-base);
 }
-.log-head{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-subtle)}
-.log-body{padding:var(--space-4) var(--space-5)}
-.log-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--space-3);align-items:center}
-.log-chip{height:32px;padding:0 12px;border-radius:var(--radius-sm);border:1px solid var(--log-chip-border);background-color:var(--log-chip-bg);color:var(--text-secondary);font-size:var(--t-sm);font-weight:500;font-family:var(--font-ui);cursor:pointer;transition:background-color var(--duration-base),border-color var(--duration-base),color var(--duration-base)}
-.log-chip:hover{background:var(--bg-hover);color:var(--text-primary)}.log-chip.on{background-color:var(--brand-primary);border-color:var(--brand-primary);color:#fff}
-.log-area{background-color:var(--log-area-bg);border:1px solid var(--border-subtle);border-radius:var(--radius-md);height:320px;overflow-y:auto;font-family:var(--font-mono);font-size:13px;line-height:1.75;transition:background-color var(--duration-slow)}
-.log-line{display:flex;align-items:baseline;gap:12px;padding:5px 16px;border-bottom:1px solid var(--border-subtle)}
-.log-line:last-child{border-bottom:none}.log-line:hover{background:var(--bg-hover)}
-[data-theme="dark"] .log-line:hover{background:var(--bg-active)}
-.log-t{color:var(--text-tertiary);flex-shrink:0;font-size:11px;width:70px}
-.log-l{padding:1px 7px;border-radius:4px;font-size:11px;font-weight:700;flex-shrink:0;letter-spacing:.4px}
-.log-l-OK{background:var(--log-l-OK-bg);color:var(--log-l-OK-color)}.log-l-INFO{background:var(--log-l-INFO-bg);color:var(--log-l-INFO-color)}.log-l-STEP{background:var(--log-l-STEP-bg);color:var(--log-l-STEP-color)}.log-l-WARN{background:var(--log-l-WARN-bg);color:var(--log-l-WARN-color)}.log-l-ERROR{background:var(--log-l-ERROR-bg);color:var(--log-l-ERROR-color)}
-.log-m{color:var(--text-primary);word-break:break-all}.log-empty{padding:40px 20px;text-align:center;color:var(--text-tertiary);font-family:var(--font-ui);font-size:var(--t-sm)}
+.log-chip:hover{background:var(--bg-hover);color:var(--text-primary)}
+.log-chip.on{background:var(--brand-primary);border-color:var(--brand-primary);color:#fff}
+.log-area{
+  background:var(--bg-base);border:1px solid var(--border-subtle);border-radius:var(--radius-md);
+  height:280px;overflow-y:auto;font-family:var(--font-mono);font-size:13px;line-height:1.6;
+}
+.log-line{display:flex;align-items:baseline;gap:var(--space-3);padding:var(--space-2) var(--space-4);border-bottom:1px solid var(--border-subtle)}
+.log-line:last-child{border-bottom:none}
+.log-line:hover{background:var(--bg-hover)}
+.log-time{color:var(--text-tertiary);font-size:11px;flex-shrink:0;width:70px}
+.log-level{
+  padding:1px 6px;border-radius:var(--radius-xs);font-size:11px;font-weight:600;flex-shrink:0;
+  text-transform:uppercase;
+}
+.log-level-OK{background:var(--success-light);color:var(--success)}
+.log-level-INFO{background:var(--info-light);color:var(--info)}
+.log-level-STEP{background:rgba(29,78,216,.07);color:var(--info)}
+.log-level-WARN{background:var(--warning-light);color:var(--warning)}
+.log-level-ERROR{background:var(--error-light);color:var(--error)}
+.log-msg{color:var(--text-primary);word-break:break-all}
+.log-empty{padding:var(--space-8);text-align:center;color:var(--text-tertiary);font-family:var(--font-ui)}
 
-/* ===== BOTTOM ROW ===== */
-.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
-@media(max-width:860px){.bottom-row{grid-template-columns:1fr}}
-
-/* ===== ABOUT ===== */
-.about-box{background-color:var(--about-bg);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:16px 18px;font-size:var(--t-sm);color:var(--text-secondary);line-height:2.2;transition:background-color var(--duration-slow),border-color var(--duration-base)}
-.about-box p{margin-bottom:2px}
-.ver-check{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-subtle);font-size:var(--t-xs);color:var(--text-tertiary)}
-.ver-check a{color:var(--brand-primary)}
-.tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;letter-spacing:.4px}
-.tag-b{background:var(--brand-light);color:var(--brand-primary)}
-a{color:var(--brand-primary);text-decoration:none}a:hover{text-decoration:underline}
+/* ===== PREFERENCES ===== */
+.pref-section{margin-bottom:var(--space-6)}
+.pref-title{font-size:var(--t-sm);font-weight:600;color:var(--text-primary);margin-bottom:var(--space-3)}
 
 /* ===== TOAST ===== */
-.toast{position:fixed;bottom:32px;right:32px;padding:12px 20px;border-radius:var(--radius-md);font-size:var(--t-sm);font-weight:500;box-shadow:var(--shadow-md);background-color:var(--toast-bg);transform:translateY(80px);opacity:0;transition:transform var(--duration-slow) var(--ease-default),opacity var(--duration-base),background-color var(--duration-slow);z-index:9999;pointer-events:none;border:1px solid var(--border-subtle)}
+.toast{
+  position:fixed;bottom:var(--space-6);right:var(--space-6);
+  padding:12px 20px;border-radius:var(--radius-md);font-size:var(--t-sm);font-weight:500;
+  box-shadow:var(--shadow-md);background:var(--bg-elevated);
+  transform:translateY(80px);opacity:0;
+  transition:transform var(--duration-slow) var(--ease-default),opacity var(--duration-base);
+  z-index:9999;pointer-events:none;border:1px solid var(--border-subtle);
+}
 .toast.show{transform:translateY(0);opacity:1}
 .toast-ok{color:var(--success)}.toast-err{color:var(--error)}.toast-info{color:var(--text-secondary)}
 
 /* ===== SPINNER ===== */
-.spn{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
-.spn-dk{border-color:var(--border-default);border-top-color:var(--text-secondary)}
-
+.spn{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.spn-dark{border-color:var(--border-default);border-top-color:var(--text-secondary)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== MODAL ===== */
 .modal-overlay{
-  position:fixed;inset:0;
-  background:rgba(0,0,0,.45);
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+  position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);
   display:flex;align-items:center;justify-content:center;
-  z-index:9999;opacity:0;pointer-events:none;
-  transition:opacity var(--duration-base);
+  z-index:9999;opacity:0;pointer-events:none;transition:opacity var(--duration-base);
 }
 .modal-overlay.on{opacity:1;pointer-events:all}
 .modal-card{
-  width:440px;max-width:92vw;
-  background:var(--bg-elevated);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-md);
-  overflow:hidden;
+  width:400px;max-width:92vw;background:var(--bg-elevated);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-md);overflow:hidden;
   transform:scale(.96) translateY(16px);
   transition:transform var(--duration-slow) var(--ease-default);
 }
 .modal-overlay.on .modal-card{transform:scale(1) translateY(0)}
-.bg-drop-zone{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
-  height:120px;border-radius:var(--radius-md);border:2px dashed var(--border-default);
-  color:var(--text-secondary);transition:all var(--duration-base);cursor:pointer;
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-subtle);
 }
-.bg-drop-zone svg{width:36px;height:36px;opacity:.5}
-.bg-drop-zone:hover,.bg-drop-zone.drag-over{border-color:var(--brand-primary);background:var(--brand-light);color:var(--brand-primary)}
-.bg-drop-zone.drag-over svg{opacity:1}
-.bg-drop-sub{font-size:var(--t-xs);color:var(--text-tertiary);margin:0}
-.bg-preview{
-  margin-top:10px;height:90px;border-radius:var(--radius-sm);
-  border:1px solid var(--border-default);overflow:hidden;
-  background:linear-gradient(135deg,#eee 25%,#fff 25%,#fff 50%,#eee 50%,#eee 75%,#fff 75%);
-  background-size:16px 16px;
-  transition:background var(--duration-base);
+.modal-title{font-size:var(--t-base);font-weight:600;color:var(--text-primary)}
+.modal-close{
+  width:28px;height:28px;border-radius:var(--radius-sm);border:none;background:transparent;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--text-secondary);transition:all var(--duration-base);
 }
-.bg-preview.has-img{background:transparent;border-color:transparent}
-.bg-info{font-size:var(--t-xs);color:var(--text-tertiary);margin-top:6px;text-align:center}
-.drop-overlay{
-  position:fixed;inset:0;z-index:99999;
-  background:rgba(0,0,0,.60);backdrop-filter:blur(6px);
-  display:flex;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity var(--duration-base);
+.modal-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.modal-body{padding:var(--space-5)}
+
+/* ===== BANNER ===== */
+.banner{display:none;background:var(--warning-light);border:1px solid rgba(180,83,9,.18);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-4)}
+.banner.on{display:block}
+.banner-title{font-size:var(--t-sm);font-weight:600;color:var(--warning);margin-bottom:var(--space-2)}
+.banner p{font-size:var(--t-xs);color:var(--text-secondary);margin-bottom:var(--space-1);line-height:1.6}
+.banner code{background:var(--bg-elevated);border:1px solid var(--border-default);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);color:var(--brand-primary)}
+
+/* ===== BG PRESETS ===== */
+.bg-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2);margin-bottom:var(--space-4)}
+.bg-preset{aspect-ratio:16/9;border-radius:var(--radius-md);cursor:pointer;border:2px solid transparent;transition:all var(--duration-base);background-size:cover;background-position:center}
+.bg-preset:hover{transform:scale(1.05)}
+.bg-preset.active{border-color:var(--brand-primary)}
+.bg-custom{margin-top:var(--space-4)}
+.bg-custom label{display:block;font-size:var(--t-sm);color:var(--text-secondary);margin-bottom:var(--space-2)}
+.bg-custom input{width:100%;padding:var(--space-3);background:var(--bg-input);border:1px solid var(--border-default);border-radius:var(--radius-lg);font-size:var(--t-sm);color:var(--text-primary);transition:border-color var(--duration-base),box-shadow var(--duration-base)}
+.bg-custom input:focus{outline:none;border-color:var(--border-focus);box-shadow:var(--shadow-input-focus)}
+
+/* ===== SETTINGS SECTION ===== */
+.settings-section{margin-bottom:var(--space-5)}
+.settings-section:last-of-type{margin-bottom:var(--space-4)}
+.settings-label{font-size:var(--t-sm);font-weight:500;color:var(--text-primary);margin-bottom:var(--space-3)}
+.settings-label span{font-weight:400;color:var(--text-tertiary)}
+.opacity-slider-wrap{padding:0 2px}
+.opacity-control{padding:0 var(--space-2)}
+.opacity-labels{display:flex;justify-content:space-between;font-size:var(--t-xs);color:var(--text-tertiary);margin-bottom:var(--space-2)}
+.opacity-range{width:100%;height:6px;-webkit-appearance:none;appearance:none;background:linear-gradient(to right,var(--border-subtle),var(--brand-primary));border-radius:3px;cursor:pointer}
+.opacity-range::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;background:var(--bg-elevated);border:2px solid var(--brand-primary);border-radius:50%;cursor:pointer;box-shadow:var(--shadow-sm)}
+.opacity-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;background:var(--bg-elevated);border:2px solid var(--brand-primary);border-radius:50%;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+/* ===== GRID ===== */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+
+/* ===== LOG AREA SCROLLBAR ===== */
+.log-area::-webkit-scrollbar{width:4px}
+.log-area::-webkit-scrollbar-track{background:transparent}
+.log-area::-webkit-scrollbar-thumb{background:var(--border-default);border-radius:2px}
+
+/* ===== ABOUT SECTION ===== */
+.about-info{background:var(--bg-base);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:var(--space-4)}
+.about-row{display:flex;justify-content:space-between;padding:var(--space-2) 0;font-size:var(--t-sm)}
+.about-row:not(:last-child){border-bottom:1px solid var(--border-subtle)}
+.about-label{color:var(--text-secondary)}.about-value{color:var(--text-primary);font-weight:500}
+.tag{background:var(--brand-light);color:var(--brand-primary);padding:2px 8px;border-radius:var(--radius-xs);font-size:var(--t-xs);font-weight:600}
+
+/* ===== MOBILE ===== */
+#menuBtn{display:none}
+@media(max-width:767px){
+  .sidebar{transform:translateX(-100%);transition:transform var(--duration-slow) var(--ease-default)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .content{padding:var(--space-4)}
+  .grid-2{grid-template-columns:1fr}
+  #menuBtn{display:flex}
 }
-.drop-overlay.on{opacity:1;pointer-events:all}
-.drop-overlay-inner{
-  display:flex;flex-direction:column;align-items:center;gap:16px;
-  color:#fff;
-}
-.drop-overlay-inner svg{width:72px;height:72px;opacity:.9}
-.drop-overlay-inner p{font-size:24px;font-weight:700}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-icon">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
-      <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
-      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-      <circle cx="12" cy="20" r="1"/>
-    </svg>
-  </div>
-  <div class="header-text">
-    <div class="header-title">锐捷认证 Web 管理面板</div>
-    <div class="header-sub">广东科学技术职业学院 · 校园网</div>
-  </div>
-  <div class="header-tag" id="verTag">v3.1</div>
-  <div class="header-actions">
-    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">
-      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-      </svg>
-      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-      </svg>
-    </button>
-    <button class="theme-btn" onclick="openSettings()" title="背景设置">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        <circle cx="12" cy="12" r="2"/>
-      </svg>
-    </button>
-  </div>
-</div>
+<!-- 移动端侧边栏遮罩 -->
+<div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:45" onclick="closeSidebar()"></div>
 
-<div class="main">
+<div class="layout">
 
-  <div class="banner" id="banner">
-    <div class="banner-t">锐捷脚本未安装</div>
-    <p>请先在路由器终端执行安装命令：</p>
-    <p><code>cd /etc/ruijie && sh setup.sh</code></p>
-    <p>或通过 GitHub 安装：</p>
-    <p><code>wget -O- https://bit.ly/rj-gdstvc | sh</code></p>
-  </div>
-
-  <!-- 顶行：左上状态 | 右上控制堆叠 -->
-  <div class="top-row">
-
-    <!-- LEFT: 网络状态 -->
-    <div class="card">
-      <div class="card-head">
-        <div class="card-icon" style="background:var(--brand-primary);color:#fff">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
             <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
             <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
             <circle cx="12" cy="20" r="1"/>
           </svg>
         </div>
-        <div class="card-label">网络状态</div>
-        <div class="card-head-r"><div class="card-action" onclick="refresh()">↻ 刷新</div></div>
-      </div>
-      <div class="card-body">
-        <div class="stat-row"><span class="stat-l">连接状态</span><span class="stat-r" id="s-online"><span class="spn spn-dk"></span></span></div>
-        <div class="stat-row"><span class="stat-l">校园网服务器</span><span class="stat-r" id="s-server">—</span></div>
-        <div class="stat-row"><span class="stat-l">当前账号</span><span class="stat-r" id="s-user">—</span></div>
-        <div class="stat-row"><span class="stat-l">运营商</span><span class="stat-r" id="s-op">—</span></div>
-        <div class="stat-row"><span class="stat-l">最后认证</span><span class="stat-r" id="s-auth">—</span></div>
+        <div class="brand-text">
+          <div class="brand-title">锐捷认证</div>
+          <div class="brand-sub">校园网管理</div>
+        </div>
       </div>
     </div>
 
-    <!-- RIGHT: 控制堆叠 -->
-    <div class="ctrl-stack">
-
-      <!-- 守护进程 -->
-      <div class="card">
-        <div class="card-head">
-          <div class="card-icon" style="background:var(--success);color:#fff">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <path d="M8 21h8"/><path d="M12 17v4"/>
-              <path d="M7 8h2"/><path d="M7 12h5"/>
-            </svg>
-          </div>
-          <div class="card-label">守护进程</div>
-        </div>
-        <div class="card-body">
-          <div class="mini-stats">
-            <div class="mini-stat"><div class="mini-stat-l">运行状态</div><div class="mini-stat-v" id="d-run"><span class="spn spn-dk"></span></div></div>
-            <div class="mini-stat"><div class="mini-stat-l">进程 ID</div><div class="mini-stat-v" id="d-pid" style="font-size:18px;font-family:var(--font-mono)">—</div></div>
-            <div class="mini-stat"><div class="mini-stat-l">运行时间</div><div class="mini-stat-v" id="d-up">—</div></div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-g" id="btn-start" onclick="daemon('start')">▶ 启动</button>
-            <button class="btn btn-r" id="btn-stop" onclick="daemon('stop')">■ 停止</button>
-            <button class="btn btn-s" id="btn-restart" onclick="daemon('restart')">↻ 重启</button>
-          </div>
-        </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="status" onclick="showPage('status')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span>状态概览</span>
       </div>
-
-      <!-- 账号 + 运营商 -->
-      <div class="card">
-        <div class="card-head">
-          <div class="card-icon" style="background:var(--brand-primary);color:#fff">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
-          <div class="card-label">账号与网络</div>
-        </div>
-        <div class="card-body">
-          <div class="field"><label class="field-label">用户名</label><input class="field-in" id="f-user" placeholder="学号/工号" autocomplete="off"></div>
-          <div class="field"><label class="field-label">密码</label><input class="field-in" id="f-pass" type="password" placeholder="密码" autocomplete="new-password"></div>
-          <div class="field">
-            <label class="field-label">运营商</label>
-            <select class="field-in field-sel" id="f-op">
-              <option value="DianXin">电信（默认）</option>
-              <option value="LianTong">联通（9栋-22栋）</option>
-            </select>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-p" id="btn-save" onclick="saveAccount()">保存账号</button>
-            <button class="btn btn-s" onclick="switchMode()">切换运营商</button>
-          </div>
-        </div>
+      <div class="nav-item" data-page="account" onclick="showPage('account')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>账号管理</span>
       </div>
-
-    </div><!-- /ctrl-stack -->
-  </div><!-- /top-row -->
-
-  <!-- 实时日志（全宽） -->
-  <div class="log-card">
-    <div class="log-head">
-      <div class="card-icon" style="background:var(--brand-primary);color:#fff">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-          <path d="M14 2v6h6"/>
-          <path d="M8 13h8"/><path d="M8 17h5"/>
-        </svg>
+      <div class="nav-item" data-page="daemon" onclick="showPage('daemon')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+        <span>守护进程</span>
       </div>
-      <div class="card-label" style="color:var(--brand-primary)">实时日志</div>
-      <div class="card-head-r">
-        <button class="btn btn-s" style="height:30px;padding:0 12px;font-size:13px" id="btn-log-toggle" onclick="toggleLog()">⏸</button>
-        <button class="btn btn-s" style="height:30px;padding:0 12px;font-size:13px" onclick="loadLog()">↻</button>
+      <div class="nav-item" data-page="log" onclick="showPage('log')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+        <span>实时日志</span>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-item" data-page="preferences" onclick="showPage('preferences')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>面板设置</span>
+      </div>
+      <div class="nav-item" data-page="settings" onclick="showPage('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 12v6M4.22 4.22l4.24 4.24m7.07 7.07l4.24 4.24M1 12h6m12 0h6M4.22 19.78l4.24-4.24m7.07-7.07l4.24-4.24"/></svg>
+        <span>代理设置</span>
+      </div>
+      <div class="nav-item" data-page="about" onclick="showPage('about')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span>关于面板</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">R</div>
+        <div>
+          <div class="user-name">锐捷管理</div>
+          <div class="user-status" id="sidebarStatus">—</div>
+        </div>
       </div>
     </div>
-    <div class="log-body">
-      <div class="log-bar">
-        <button class="log-chip on" data-lvl="" onclick="filterLog('')">全部</button>
-        <button class="log-chip" data-lvl="INFO" onclick="filterLog('INFO')">INFO</button>
-        <button class="log-chip" data-lvl="OK" onclick="filterLog('OK')">成功</button>
-        <button class="log-chip" data-lvl="WARN" onclick="filterLog('WARN')">警告</button>
-        <button class="log-chip" data-lvl="ERROR" onclick="filterLog('ERROR')">错误</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:var(--space-3)">
+        <button class="icon-btn" id="menuBtn" onclick="toggleSidebar()" title="菜单">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-title" id="pageTitle">状态概览</div>
       </div>
-      <div class="log-area" id="logViewer"><div class="log-empty">暂无日志，请先启动守护进程</div></div>
+      <div class="topbar-actions">
+        <button class="icon-btn refresh-btn" onclick="refresh()" title="刷新">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+        </button>
+        <span class="sep"></span>
+        <button class="theme-btn" onclick="toggleTheme()" title="切换主题">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="logoutPanel()" title="退出登录">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- BANNER -->
+      <div class="banner" id="banner">
+        <div class="banner-title">锐捷脚本未安装</div>
+        <p>请先在路由器终端执行安装命令：</p>
+        <p><code>cd /etc/ruijie && sh setup.sh</code></p>
+      </div>
+
+      <!-- PAGE: STATUS -->
+      <div id="page-status">
+        <div class="card" style="margin-bottom:var(--space-4)">
+          <div class="card-header">
+            <div class="card-icon" style="background:var(--brand-primary);color:#fff">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </div>
+            <div class="card-title">网络状态</div>
+          </div>
+          <div class="card-body">
+            <div class="stat-row"><span class="stat-label">连接状态</span><span class="stat-value" id="s-online"><span class="spn spn-dark"></span></span></div>
+            <div class="stat-row"><span class="stat-label">校园网服务器</span><span class="stat-value" id="s-server">—</span></div>
+            <div class="stat-row"><span class="stat-label">当前账号</span><span class="stat-value" id="s-user">—</span></div>
+            <div class="stat-row"><span class="stat-label">运营商</span><span class="stat-value" id="s-op">—</span></div>
+            <div class="stat-row"><span class="stat-label">最后认证</span><span class="stat-value" id="s-auth">—</span></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon" style="background:var(--success);color:#fff">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+              </div>
+              <div class="card-title">守护进程</div>
+            </div>
+            <div class="card-body">
+              <div class="mini-stats">
+                <div class="mini-stat"><div class="mini-stat-label">状态</div><div class="mini-stat-value" id="d-run"><span class="spn spn-dark"></span></div></div>
+                <div class="mini-stat"><div class="mini-stat-label">PID</div><div class="mini-stat-value" id="d-pid" style="font-size:16px;font-family:var(--font-mono)">—</div></div>
+                <div class="mini-stat"><div class="mini-stat-label">运行时间</div><div class="mini-stat-value" id="d-up">—</div></div>
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-g" id="btn-start" onclick="daemon('start')">启动</button>
+                <button class="btn btn-r" id="btn-stop" onclick="daemon('stop')">停止</button>
+                <button class="btn btn-s" id="btn-restart" onclick="daemon('restart')">重启</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon" style="background:var(--info);color:#fff">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="card-title">账号信息</div>
+            </div>
+            <div class="card-body">
+              <div class="stat-row"><span class="stat-label">用户名</span><span class="stat-value" id="a-user">—</span></div>
+              <div class="stat-row"><span class="stat-label">运营商</span><span class="stat-value" id="a-op">—</span></div>
+              <div class="stat-row"><span class="stat-label">账号类型</span><span class="stat-value" id="a-type">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: ACCOUNT -->
+      <div id="page-account" style="display:none">
+        <div class="field"><label class="field-label">用户名</label><input class="field-in" id="f-user" placeholder="学号/工号"></div>
+        <div class="field"><label class="field-label">密码</label><input class="field-in" id="f-pass" type="password" placeholder="校园网密码"></div>
+        <div class="field">
+          <label class="field-label">运营商</label>
+          <select class="field-in field-sel" id="f-op">
+            <option value="DianXin">电信（默认）</option>
+            <option value="LianTong">联通（9栋-22栋）</option>
+          </select>
+        </div>
+        <div class="btn-row" style="margin-top:var(--space-4)">
+          <button class="btn btn-p" onclick="saveAccount()">保存账号</button>
+          <button class="btn btn-s" onclick="switchMode()">切换运营商</button>
+        </div>
+      </div>
+
+      <!-- PAGE: DAEMON -->
+      <div id="page-daemon" style="display:none">
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat-label">运行状态</div><div class="mini-stat-value" id="dm-run"><span class="spn spn-dark"></span></div></div>
+          <div class="mini-stat"><div class="mini-stat-label">进程 ID</div><div class="mini-stat-value" id="dm-pid" style="font-size:16px;font-family:var(--font-mono)">—</div></div>
+          <div class="mini-stat"><div class="mini-stat-label">运行时长</div><div class="mini-stat-value" id="dm-up">—</div></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-g" onclick="daemon('start')">▶ 启动</button>
+          <button class="btn btn-r" onclick="daemon('stop')">■ 停止</button>
+          <button class="btn btn-s" onclick="daemon('restart')">↻ 重启</button>
+        </div>
+      </div>
+
+      <!-- PAGE: LOG -->
+      <div id="page-log" style="display:none">
+        <div class="log-header">
+          <div class="log-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>
+            实时日志
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-s" style="height:28px;padding:0 10px;font-size:12px" id="btn-log-toggle" onclick="toggleLog()">暂停</button>
+            <button class="btn btn-s" style="height:28px;padding:0 10px;font-size:12px" onclick="loadLog()">刷新</button>
+          </div>
+        </div>
+        <div class="log-filters">
+          <button class="log-chip on" data-lvl="" onclick="filterLog('')">全部</button>
+          <button class="log-chip" data-lvl="INFO" onclick="filterLog('INFO')">INFO</button>
+          <button class="log-chip" data-lvl="OK" onclick="filterLog('OK')">成功</button>
+          <button class="log-chip" data-lvl="WARN" onclick="filterLog('WARN')">警告</button>
+          <button class="log-chip" data-lvl="ERROR" onclick="filterLog('ERROR')">错误</button>
+        </div>
+        <div class="log-area" id="logViewer"><div class="log-empty">暂无日志，请先启动守护进程</div></div>
+      </div>
+
+      <!-- PAGE: PREFERENCES -->
+      <div id="page-preferences" style="display:none">
+        <div class="pref-section">
+          <div class="pref-title">壁纸</div>
+          <div class="bg-presets" id="bgPresets">
+            <div class="bg-preset" data-bg="" style="background:#F5F4EF" title="默认"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=60')" title="山川"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=60')" title="山脉"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1507400492013-162706c8c05e?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1507400492013-162706c8c05e?w=400&q=60')" title="森林"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&q=60')" title="星空"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400&q=60')" title="海浪"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1475274047050-1d0c0975de5e?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1475274047050-1d0c0975de5e?w=400&q=60')" title="日落"></div>
+            <div class="bg-preset" data-bg="https://images.unsplash.com/photo-1540206395-68808572332f?w=1920&q=80" style="background:url('https://images.unsplash.com/photo-1540206395-68808572332f?w=400&q=60')" title="城市"></div>
+          </div>
+          <div class="bg-custom" style="margin-top:var(--space-4)">
+            <label class="field-label">自定义图片链接</label>
+            <input type="text" id="bgInput" class="field-in" placeholder="输入图片 URL">
+          </div>
+        </div>
+
+        <div class="pref-section">
+          <div class="pref-title">界面透明度</div>
+          <div class="opacity-control">
+            <div class="opacity-labels"><span>50%</span><span id="opacityValue">100%</span><span>100%</span></div>
+            <input type="range" id="opacitySlider" min="50" max="100" value="100" class="opacity-range">
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: SETTINGS -->
+      <div id="page-settings" style="display:none">
+        <div class="field"><label class="field-label">HTTP / HTTPS 代理</label><input class="field-in" id="f-proxy" placeholder="如 http://127.0.0.1:7890，留空则不使用"></div>
+        <div class="field-hint">国内校园网通常不需要代理</div>
+        <div class="btn-row" style="margin-top:var(--space-4)"><button class="btn btn-p" onclick="saveSettings()">保存设置</button></div>
+      </div>
+
+      <!-- PAGE: ABOUT -->
+      <div id="page-about" style="display:none">
+        <div class="about-info">
+          <div class="about-row"><span class="about-label">面板版本</span><span class="about-value"><span class="tag" id="verTag">v3.1</span></span></div>
+          <div class="about-row"><span class="about-label">核心版本</span><span class="about-value" id="coreVer">—</span></div>
+          <div class="about-row"><span class="about-label">开发者</span><span class="about-value">huantuoshen-prog</span></div>
+          <div class="about-row"><span class="about-label">学校</span><span class="about-value">广东科学技术职业学院</span></div>
+        </div>
+        <div class="btn-row" style="margin-top:var(--space-4)">
+          <a class="btn btn-s" href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin" target="_blank">GitHub 仓库</a>
+          <button class="btn btn-s" onclick="checkVer()">检查更新</button>
+        </div>
+        <div style="margin-top:var(--space-4);font-size:var(--t-xs);color:var(--text-tertiary)" id="verStatus"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay on" id="authOverlay">
+  <div class="modal-card" style="width:480px;max-width:92vw">
+    <div class="modal-body">
+      <div style="font-size:var(--t-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">WEB 面板访问保护</div>
+      <div class="modal-title" style="margin-bottom:var(--space-3)">输入面板密码</div>
+      <p style="font-size:var(--t-sm);color:var(--text-secondary);line-height:1.7;margin-bottom:var(--space-4)">面板已默认加上独立访问保护；同一局域网里的其他设备不能再直接裸用管理接口。</p>
+      <form id="authForm">
+        <div class="field">
+          <label class="field-label" for="authPass">面板密码</label>
+          <input class="field-in" id="authPass" type="password" placeholder="请输入安装脚本初始化的 Web 面板密码" autocomplete="current-password">
+        </div>
+        <div class="field-hint" id="authError" style="min-height:18px;color:var(--error);margin-bottom:var(--space-3)"></div>
+        <button class="btn btn-p" id="authSubmit" type="submit" style="width:100%;height:44px">进入控制台</button>
+      </form>
     </div>
   </div>
-
-  <div class="bottom-row">
-
-    <div class="card">
-      <div class="card-head">
-        <div class="card-icon" style="background:var(--text-secondary);color:#fff">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2"/>
-            <path d="M8 21h8"/><path d="M12 17v4"/>
-            <path d="M7 8h2"/><path d="M7 12h5"/>
-          </svg>
-        </div>
-        <div class="card-label">代理设置</div>
-      </div>
-      <div class="card-body">
-        <div class="field"><label class="field-label">HTTP / HTTPS 代理</label><input class="field-in" id="f-proxy" placeholder="如 http://127.0.0.1:7890，留空则不使用"></div>
-        <span class="field-hint">国内校园网通常不需要代理</span>
-        <div style="margin-top:10px"><button class="btn btn-p" onclick="saveSettings()">保存</button></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <div class="card-icon" style="background:var(--text-tertiary);color:#fff">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 16v-4"/>
-            <path d="M12 8h.01"/>
-          </svg>
-        </div>
-        <div class="card-label">关于</div>
-      </div>
-      <div class="card-body">
-        <div class="about-box">
-          <p>锐捷认证 Web 管理面板 <span class="tag tag-b">v3.1</span></p>
-          <p>广东科学技术职业学院 · 校园网专用</p>
-          <p><a href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin" target="_blank">GitHub 仓库 →</a></p>
-        </div>
-        <div class="ver-check"><span id="verStatus">检查更新中...</span></div>
-      </div>
-    </div>
-
-  </div><!-- /bottom-row -->
-</div><!-- /main -->
+</div>
 
 <div class="toast" id="toast"></div>
 
-<!-- 背景设置弹窗 -->
-<div class="modal-overlay" id="bgModal" onclick="if(event.target===this)closeSettings()">
-  <div class="modal-card">
-    <div class="card-head">
-      <div class="card-icon" style="background:var(--brand-primary);color:#fff">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-          <circle cx="12" cy="12" r="2"/>
-        </svg>
-      </div>
-      <div class="card-label" style="color:var(--brand-primary)">背景设置</div>
-      <div class="card-head-r"><div class="card-action" onclick="closeSettings()">✕</div></div>
-    </div>
-    <div class="card-body">
-      <div id="bgDropZone" class="bg-drop-zone">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="3"/>
-          <circle cx="8.5" cy="8.5" r="1.5"/>
-          <path d="M21 15l-5-5L5 21"/>
-        </svg>
-        <p id="bgDropText">拖拽图片到此处</p>
-        <p class="bg-drop-sub">或</p>
-        <label class="btn btn-s" style="cursor:pointer">
-          从文件管理器选择
-          <input type="file" id="f-bg" accept="image/*" style="display:none">
-        </label>
-      </div>
-      <div id="bgPreview" class="bg-preview"></div>
-      <div id="bgInfo" class="bg-info"></div>
-      <div class="btn-row" style="margin-top:12px">
-        <button class="btn btn-s" onclick="clearBg()">恢复默认</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 全局拖拽遮罩 -->
-<div class="drop-overlay" id="dropOverlay">
-  <div class="drop-overlay-inner">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="3"/>
-      <circle cx="8.5" cy="8.5" r="1.5"/>
-      <path d="M21 15l-5-5L5 21"/>
-    </svg>
-    <p>松开设为背景</p>
-  </div>
-</div>
-
 <script>
-const BASE = '/ruijie-cgi';
-let timer = null, logTimer = null, logPaused = false;
-let curLvl = '', allLog = [];
-let ctrl = null;
+const BASE='/ruijie-cgi';
+let timer=null,logTimer=null,logPaused=false;
+let curLvl='',allLog=[];
+let ctrl=null;
+let authReady=false;
+let authBootstrap=null;
+let authPromptPromise=null;
+let authResolve=null;
 
-// 主题
-function getTheme() { return localStorage.getItem('theme') || ''; }
-function applyTheme(t) {
-  if (t === 'dark' || (t === '' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
+function setAuthOverlay(open,msg=''){
+  const overlay=document.getElementById('authOverlay');
+  const error=document.getElementById('authError');
+  overlay.classList.toggle('on',open);
+  error.textContent=msg;
+  if(open){setTimeout(()=>document.getElementById('authPass').focus(),0)}
 }
-function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme');
-  const next = cur === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('theme', next);
+
+function resetAuthState(msg=''){
+  authReady=false;
+  if(timer){clearInterval(timer);timer=null}
+  if(logTimer){clearInterval(logTimer);logTimer=null}
+  if(authResolve){authResolve(false);authResolve=null}
+  authPromptPromise=null;
+  setAuthOverlay(true,msg);
+}
+
+async function bootstrapAuth(){
+  if(authBootstrap)return authBootstrap;
+  authBootstrap=(async()=>{
+    try{
+      const r=await fetch(BASE+'/auth.sh',{credentials:'same-origin'});
+      const d=await r.json();
+      if(d.authenticated){
+        authReady=true;
+        setAuthOverlay(false);
+        return true;
+      }
+    }catch(_){show('无法检查登录状态','err')}
+    resetAuthState('');
+    return false;
+  })();
+  try{return await authBootstrap}
+  finally{authBootstrap=null}
+}
+
+function promptAuth(msg=''){
+  if(authReady)return Promise.resolve(true);
+  setAuthOverlay(true,msg);
+  if(!authPromptPromise){authPromptPromise=new Promise(resolve=>{authResolve=resolve})}
+  return authPromptPromise;
+}
+
+async function ensureAuth(msg=''){
+  if(authReady)return true;
+  const ok=await bootstrapAuth();
+  if(ok)return true;
+  return promptAuth(msg);
+}
+
+function getTheme(){return localStorage.getItem('theme')||''}
+function applyTheme(t){
+  if(t==='dark'||(t===''&&window.matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.documentElement.setAttribute('data-theme','dark');
+  }else{document.documentElement.removeAttribute('data-theme')}
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next=cur==='dark'?'light':'dark';
+  localStorage.setItem('theme',next);
   applyTheme(next);
 }
-
-// 无需重复执行：IIFE 已在 <head> 中设置
-
-// ===== IndexedDB 背景存储 =====
-var _bgDB=null;
-function openBGDB(){
-  return new Promise(function(res,rej){
-    if(_bgDB){res(_bgDB);return}
-    var req=indexedDB.open('ruijie-bg',1);
-    req.onerror=function(){rej(req.error)};
-    req.onsuccess=function(){_bgDB=req.result;res(_bgDB)};
-    req.onupgradeneeded=function(e){
-      var db=e.target.result;
-      if(!db.objectStoreNames.contains('bg'))db.createObjectStore('bg',{keyPath:'id'});
-    };
-  });
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').style.display=document.getElementById('sidebar').classList.contains('open')?'block':'none';
 }
-function bgGet(){
-  return new Promise(function(res,rej){
-    openBGDB().then(function(db){
-      var tx=db.transaction('bg','readonly');
-      var store=tx.objectStore('bg');
-      var r=store.get('wallpaper');
-      r.onsuccess=function(){res(r.result)};
-      r.onerror=function(){rej(r.error)};
-    }).catch(rej);
-  });
-}
-function bgPut(blob){
-  return new Promise(function(res,rej){
-    openBGDB().then(function(db){
-      var tx=db.transaction('bg','readwrite');
-      tx.objectStore('bg').put({id:'wallpaper',blob:blob,ts:Date.now()});
-      tx.oncomplete=res;
-      tx.onerror=function(){rej(tx.error)};
-    }).catch(rej);
-  });
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').style.display='none';
 }
 
-var _currentBgUrl=null;
-var _previewBgUrl=null;
-function applyBg(url){
-  if(_currentBgUrl&&_currentBgUrl.startsWith('blob:'))URL.revokeObjectURL(_currentBgUrl);
-  _currentBgUrl=url;
-  document.body.style.setProperty('--bg-image','url('+url+')');
-}
-function clearBg(){
-  if(_currentBgUrl){URL.revokeObjectURL(_currentBgUrl);_currentBgUrl=null}
-  openBGDB().then(function(db){
-    var tx=db.transaction('bg','readwrite');
-    tx.objectStore('bg').delete('wallpaper');
-    tx.oncomplete=function(){};
-    tx.onerror=function(){};
-  }).catch(function(){});
-  document.body.style.setProperty('--bg-image','none');
-  var preview=document.getElementById('bgPreview');
-  var info=document.getElementById('bgInfo');
-  if(preview){preview.style.backgroundImage='';preview.classList.remove('has-img')}
-  if(info)info.textContent='';
-  closeSettings();
-  show('背景已恢复默认','info');
+function showPage(p){
+  closeSidebar();
+  document.querySelectorAll('[id^=page-]').forEach(el=>el.style.display='none');
+  document.getElementById('page-'+p).style.display='block';
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelector('.nav-item[data-page="'+p+'"]').classList.add('active');
+  const titles={status:'状态概览',account:'账号管理',daemon:'守护进程',log:'实时日志',preferences:'面板设置',settings:'代理设置',about:'关于面板'};
+  document.getElementById('pageTitle').textContent=titles[p]||'锐捷认证';
+  if(p==='log'&&!logTimer&&!logPaused)loadLog();
+  if(p==='preferences')loadPrefs();
 }
 
-openBGDB().then(function(){
-  bgGet().then(function(rec){
-    if(rec&&rec.blob){
-      applyBg(URL.createObjectURL(rec.blob));
-    }
-  }).catch(function(){});
-});
-
-function openSettings(){
-  if(_previewBgUrl){URL.revokeObjectURL(_previewBgUrl);_previewBgUrl=null}
-  bgGet().then(function(rec){
-    var preview=document.getElementById('bgPreview');
-    var info=document.getElementById('bgInfo');
-    if(rec&&rec.blob){
-      var u=URL.createObjectURL(rec.blob);
-      _previewBgUrl=u;
-      preview.style.backgroundImage='url("'+u+'")';
-      preview.style.backgroundSize='cover';
-      preview.style.backgroundPosition='center';
-      preview.classList.add('has-img');
-      var mb=Math.round(rec.blob.size/1024);
-      info.textContent='已保存 ('+mb+' KB)';
-    }else{
-      preview.style.backgroundImage='';
-      preview.classList.remove('has-img');
-      info.textContent='暂未设置自定义背景';
-    }
-    document.getElementById('bgModal').classList.add('on');
-  }).catch(function(){document.getElementById('bgModal').classList.add('on')});
-}
-function closeSettings(){
-  if(_previewBgUrl){URL.revokeObjectURL(_previewBgUrl);_previewBgUrl=null}
-  document.getElementById('bgModal').classList.remove('on')
-}
-
-function handleBgFile(file){
-  if(!file||!file.type.startsWith('image/')){show('请选择图片文件','err');return}
-  var mb=file.size/1024/1024;
-  if(mb>20){show('图片请勿超过 20MB','err');return}
-  var preview=document.getElementById('bgPreview');
-  var info=document.getElementById('bgInfo');
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var url=e.target.result;
-    preview.style.backgroundImage='url("'+url+'")';
-    preview.style.backgroundSize='cover';
-    preview.style.backgroundPosition='center';
-    preview.classList.add('has-img');
-    info.textContent=file.name+' ('+Math.round(mb*1024)+' KB)';
-  };
-  reader.readAsDataURL(file);
-  bgPut(file).then(function(){
-    applyBg(URL.createObjectURL(file));
-    show('背景已保存','ok');
-    closeSettings();
-  }).catch(function(){show('保存失败','err')});
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-  document.getElementById('f-bg').addEventListener('change',function(){
-    if(this.files[0])handleBgFile(this.files[0]);
-  });
-
-  var dropZone=document.getElementById('bgDropZone');
-  dropZone.addEventListener('dragover',function(e){e.preventDefault();this.classList.add('drag-over')});
-  dropZone.addEventListener('dragleave',function(){this.classList.remove('drag-over')});
-  dropZone.addEventListener('drop',function(e){
-    e.preventDefault();this.classList.remove('drag-over');
-    if(e.dataTransfer.files[0])handleBgFile(e.dataTransfer.files[0]);
-  });
-
-  var dropOverlay=document.getElementById('dropOverlay');
-  document.addEventListener('dragover',function(e){
-    e.preventDefault();
-    if(e.dataTransfer.types.includes('Files'))dropOverlay.classList.add('on');
-  });
-  document.addEventListener('dragleave',function(e){
-    if(e.target===document||!document.contains(e.relatedTarget))dropOverlay.classList.remove('on');
-  });
-  document.addEventListener('drop',function(e){
-    e.preventDefault();
-    dropOverlay.classList.remove('on');
-    if(e.dataTransfer.files[0])handleBgFile(e.dataTransfer.files[0]);
-  });
-  await refresh();
-  checkVer();
-  loadSettings();
-  loadLog();
-});
-
-async function api(path, opts = {}) {
-  if (ctrl) ctrl.abort();
-  ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const r = await fetch(BASE + path, { signal: ctrl.signal, ...opts });
+async function api(path,opts={}){
+  if(ctrl)ctrl.abort();
+  ctrl=new AbortController();
+  const id=setTimeout(()=>ctrl.abort(),15000);
+  try{
+    await ensureAuth();
+    const r=await fetch(BASE+path,{signal:ctrl.signal,credentials:'same-origin',...opts});
     clearTimeout(id);
+    if(r.status===401){
+      resetAuthState('请先输入面板密码');
+      await promptAuth('请先输入面板密码');
+      return api(path,opts);
+    }
     return await r.json();
-  } catch (e) {
+  }catch(e){
     clearTimeout(id);
-    if (e.name === 'AbortError') show('请求超时', 'err');
+    if(e.name==='AbortError')show('请求超时','err');
     throw e;
   }
 }
 
-async function refresh() {
-  try { render(await api('/status.sh')); } catch (_) {}
+async function refresh(){
+  try{render(await api('/status.sh'))}catch(_){}
 }
 
-function render(d) {
-  if (!d.installed) { document.getElementById('banner').classList.add('on'); return; }
+function render(d){
+  if(!d.installed){document.getElementById('banner').classList.add('on');return}
   document.getElementById('banner').classList.remove('on');
-  document.getElementById('verTag').textContent = 'v' + (d.version || '3.1');
-  const onl = document.getElementById('s-online');
-  if (d.online) { onl.innerHTML = '<span class="dot dot-g"></span>已连接'; onl.className = 'stat-r ok'; }
-  else { onl.innerHTML = '<span class="dot dot-r"></span>未连接'; onl.className = 'stat-r err'; }
-  const sv = document.getElementById('s-server');
-  sv.textContent = d.online ? '10.30.252.71' : '—';
-  sv.className = d.online ? 'stat-r ok' : 'stat-r';
-  document.getElementById('s-user').textContent = d.username || '—';
-  document.getElementById('s-op').textContent = d.operator === 'LianTong' ? '联通' : '电信';
-  document.getElementById('s-auth').textContent = d.last_auth || '—';
-  const dr = document.getElementById('d-run');
-  if (d.daemon_running) { dr.innerHTML = '<span class="dot dot-g"></span>运行中'; dr.className = 'mini-stat-v ok'; }
-  else { dr.innerHTML = '<span class="dot dot-r"></span>未运行'; dr.className = 'mini-stat-v err'; }
-  document.getElementById('d-pid').textContent = d.daemon_pid || '—';
-  document.getElementById('d-up').textContent = d.daemon_uptime || '—';
-  document.getElementById('btn-start').disabled = d.daemon_running;
-  document.getElementById('btn-stop').disabled  = !d.daemon_running;
-  document.getElementById('f-user').value = d.username || '';
-  document.getElementById('f-op').value = d.operator || 'DianXin';
-  if (timer) clearInterval(timer);
-  timer = setInterval(refresh, 30000);
+  document.getElementById('verTag').textContent='v'+(d.version||'3.1');
+  document.getElementById('coreVer').textContent='v'+(d.version||'3.1');
+  const onl=document.getElementById('s-online');
+  if(d.online){onl.innerHTML='<span class="dot dot-g"></span>已连接';onl.className='stat-value ok'}
+  else{onl.innerHTML='<span class="dot dot-r"></span>未连接';onl.className='stat-value err'}
+  document.getElementById('s-server').textContent=d.online?'10.30.252.71':'—';
+  document.getElementById('s-user').textContent=d.username||'—';
+  document.getElementById('s-op').textContent=d.operator==='LianTong'?'联通':'电信';
+  document.getElementById('s-auth').textContent=d.last_auth||'—';
+  document.getElementById('a-user').textContent=d.username||'—';
+  document.getElementById('a-op').textContent=d.operator==='LianTong'?'联通':'电信';
+  document.getElementById('a-type').textContent=d.account_type==='teacher'?'教师':'学生';
+  const dr=document.getElementById('d-run');
+  if(d.daemon_running){dr.innerHTML='<span class="dot dot-g"></span>运行中';dr.className='mini-stat-value ok'}
+  else{dr.innerHTML='<span class="dot dot-r"></span>未运行';dr.className='mini-stat-value err'}
+  document.getElementById('d-pid').textContent=d.daemon_pid||'—';
+  document.getElementById('d-up').textContent=d.daemon_uptime||'—';
+  document.getElementById('dm-run').innerHTML=dr.innerHTML;
+  document.getElementById('dm-run').className=dr.className;
+  document.getElementById('dm-pid').textContent=d.daemon_pid||'—';
+  document.getElementById('dm-up').textContent=d.daemon_uptime||'—';
+  document.getElementById('btn-start').disabled=d.daemon_running;
+  document.getElementById('btn-stop').disabled=!d.daemon_running;
+  document.getElementById('f-user').value=d.username||'';
+  document.getElementById('f-op').value=d.operator||'DianXin';
+  document.getElementById('sidebarStatus').textContent=d.online?'● 已连接':'○ 离线';
+  if(timer)clearInterval(timer);
+  timer=setInterval(refresh,30000);
 }
 
-async function saveAccount() {
-  const u = document.getElementById('f-user').value.trim();
-  const p = document.getElementById('f-pass').value;
-  const o = document.getElementById('f-op').value;
-  if (!u || !p) { show('用户名和密码不能为空', 'err'); return; }
-  const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = '保存中...';
-  try {
-    const d = await api('/account.sh', { method:'POST', body: new URLSearchParams({username:u, password:p, operator:o}) });
-    if (d.success) { show('账号已保存', 'ok'); document.getElementById('f-pass').value = ''; refresh(); }
-    else show(d.message || '保存失败', 'err');
-  } catch (_) { show('保存失败', 'err'); }
-  finally { btn.disabled = false; btn.textContent = '保存账号'; }
+async function saveAccount(){
+  const u=document.getElementById('f-user').value.trim();
+  const p=document.getElementById('f-pass').value;
+  const o=document.getElementById('f-op').value;
+  if(!u||!p){show('用户名和密码不能为空','err');return}
+  const btn=event.target;
+  btn.disabled=true;btn.textContent='保存中...';
+  try{
+    const d=await api('/account.sh',{method:'POST',body:new URLSearchParams({username:u,password:p,operator:o})});
+    if(d.success){show('账号已保存','ok');document.getElementById('f-pass').value='';refresh()}
+    else show(d.message||'保存失败','err');
+  }catch(_){show('保存失败','err')}
+  finally{btn.disabled=false;btn.textContent='保存账号'}
 }
 
-async function daemon(action) {
-  const m = {start:'btn-start', stop:'btn-stop', restart:'btn-restart'};
-  const lbl = {start:'▶ 启动', stop:'■ 停止', restart:'↻ 重启'};
-  const btn = document.getElementById(m[action]);
-  btn.disabled = true; btn.innerHTML = '<span class="spn spn-dk"></span>';
-  try {
-    const d = await api('/daemon.sh', {method:'POST', body: new URLSearchParams({action})});
-    if (d.success) { show(d.message || '操作成功', 'ok'); refresh(); }
-    else show(d.message || '操作失败', 'err');
-  } catch (_) { show('请求失败', 'err'); }
-  finally { btn.disabled = false; btn.innerHTML = lbl[action]; }
+async function daemon(action){
+  const m={start:'btn-start',stop:'btn-stop',restart:'btn-restart'};
+  const lbl={start:'启动',stop:'停止',restart:'重启'};
+  const btn=document.getElementById(m[action]);
+  btn.disabled=true;btn.innerHTML='<span class="spn spn-dark"></span>';
+  try{
+    const d=await api('/daemon.sh',{method:'POST',body:new URLSearchParams({action})});
+    if(d.success){show(d.message||'操作成功','ok');refresh()}
+    else show(d.message||'操作失败','err');
+  }catch(_){show('请求失败','err')}
+  finally{btn.disabled=false;btn.textContent=lbl[action]}
 }
 
-async function switchMode() {
-  const o = document.getElementById('f-op').value;
-  const btn = event.target;
-  btn.disabled = true; btn.innerHTML = '<span class="spn spn-dk"></span> 切换中...';
-  try {
-    const d = await api('/mode.sh', {method:'POST', body: new URLSearchParams({operator:o})});
-    if (d.success) { show(d.message || '已切换', 'ok'); refresh(); }
-    else show(d.message || '切换失败', 'err');
-  } catch (_) { show('切换失败', 'err'); }
-  finally { btn.disabled = false; btn.textContent = '切换运营商'; }
+async function switchMode(){
+  const o=document.getElementById('f-op').value;
+  const btn=event.target;
+  btn.disabled=true;btn.innerHTML='<span class="spn spn-dark"></span> 切换中...';
+  try{
+    const d=await api('/mode.sh',{method:'POST',body:new URLSearchParams({operator:o})});
+    if(d.success){show(d.message||'已切换','ok');refresh()}
+    else show(d.message||'切换失败','err');
+  }catch(_){show('切换失败','err')}
+  finally{btn.disabled=false;btn.textContent='切换运营商'}
 }
 
-async function loadLog() {
-  if (logPaused) return;
-  try {
-    const lvl = curLvl ? '?level=' + curLvl : '';
-    const d = await api('/log.sh' + lvl);
-    allLog = d.lines || [];
+async function loadLog(){
+  if(logPaused)return;
+  try{
+    const lvl=curLvl?'?level='+curLvl:'';
+    const d=await api('/log.sh'+lvl);
+    allLog=d.lines||[];
     drawLog();
-    if (!logTimer && !logPaused) logTimer = setInterval(loadLog, 10000);
-  } catch (_) {}
+    if(!logTimer&&!logPaused)logTimer=setInterval(loadLog,10000);
+  }catch(_){}
 }
 
-function drawLog() {
-  const v = document.getElementById('logViewer');
-  if (!allLog.length) { v.innerHTML = '<div class="log-empty">暂无日志，请先启动守护进程</div>'; return; }
-  v.innerHTML = allLog.map(l => {
-    const cls = 'log-l log-l-' + (l.level || 'INFO');
-    const ts = l.ts ? l.ts.substring(11, 19) : '';
-    return '<div class="log-line"><span class="log-t">' + esc(ts) + '</span><span class="' + cls + '">' + esc(l.level||'INFO') + '</span><span class="log-m"></span></div>';
+function drawLog(){
+  const v=document.getElementById('logViewer');
+  if(!allLog.length){v.innerHTML='<div class="log-empty">暂无日志，请先启动守护进程</div>';return}
+  v.innerHTML=allLog.map(l=>{
+    const cls='log-level log-level-'+(l.level||'INFO');
+    const ts=l.ts?l.ts.substring(11,19):'';
+    return'<div class="log-line"><span class="log-time">'+esc(ts)+'</span><span class="'+cls+'">'+(l.level||'INFO')+'</span><span class="log-msg"></span></div>';
   }).join('');
-  v.querySelectorAll('.log-m').forEach((el, i) => { el.textContent = allLog[i]?.msg || ''; });
-  v.scrollTop = v.scrollHeight;
+  v.querySelectorAll('.log-msg').forEach((el,i)=>{el.textContent=allLog[i]?.msg||''});
+  v.scrollTop=v.scrollHeight;
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function filterLog(lvl){curLvl=lvl;document.querySelectorAll('.log-chip').forEach(c=>c.classList.toggle('on',c.dataset.lvl===lvl));loadLog()}
+function toggleLog(){logPaused=!logPaused;document.getElementById('btn-log-toggle').textContent=logPaused?'▶':'暂停';if(!logPaused)loadLog()}
 
-function filterLog(lvl) { curLvl = lvl; document.querySelectorAll('.log-chip').forEach(c => c.classList.toggle('on', c.dataset.lvl === lvl)); loadLog(); }
-
-function toggleLog() { logPaused = !logPaused; document.getElementById('btn-log-toggle').textContent = logPaused ? '▶' : '⏸'; if (!logPaused) loadLog(); }
-
-async function loadSettings() { try { const d = await api('/settings.sh'); document.getElementById('f-proxy').value = d.proxy_url || ''; } catch (_) {} }
-
-async function saveSettings() {
-  const px = document.getElementById('f-proxy').value.trim();
-  try { const d = await api('/settings.sh', {method:'POST', body: new URLSearchParams({proxy_url:px, proxy_url_https:px})}); if (d.success) show('设置已保存', 'ok'); else show(d.message || '保存失败', 'err'); }
-  catch (_) { show('保存失败', 'err'); }
+async function loadSettings(){try{const d=await api('/settings.sh');document.getElementById('f-proxy').value=d.proxy_url||''}catch(_){}}
+async function saveSettings(){
+  const px=document.getElementById('f-proxy').value.trim();
+  try{const d=await api('/settings.sh',{method:'POST',body:new URLSearchParams({proxy_url:px,proxy_url_https:px})});if(d.success)show('设置已保存','ok');else show(d.message||'保存失败','err')}
+  catch(_){show('保存失败','err')}
 }
 
-async function checkVer() {
-  try {
-    const r = await fetch('https://api.github.com/repos/huantuoshen-prog/ruijie-gdstvc-autologin/releases/latest', {signal:AbortSignal.timeout(5000)});
-    const d = await r.json();
-    const v = d.tag_name || '', cur = 'v3.1';
-    const el = document.getElementById('verStatus');
-    if (v && v !== cur) el.innerHTML = '有新版本 <strong>' + v + '</strong>，当前 ' + cur + ' · <a href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/releases" target="_blank">查看更新</a>';
-    else el.textContent = '已是最新版本 (' + cur + ')';
-  } catch (_) { document.getElementById('verStatus').textContent = '无法检查更新（网络不可达）'; }
+async function checkVer(){
+  try{
+    const r=await fetch('https://api.github.com/repos/huantuoshen-prog/ruijie-gdstvc-autologin/releases/latest',{signal:AbortSignal.timeout(5000)});
+    const d=await r.json();
+    const v=d.tag_name||'',cur='v3.1';
+    const el=document.getElementById('verStatus');
+    if(v&&v!==cur)el.innerHTML='有新版本 <strong>'+v+'</strong>，当前 '+cur+' · <a href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/releases" target="_blank" style="color:var(--brand-primary)">查看更新</a>';
+    else el.textContent='已是最新版本 ('+cur+')';
+  }catch(_){document.getElementById('verStatus').textContent='无法检查更新'}
 }
 
-function show(msg, type = 'info') { const el = document.getElementById('toast'); el.textContent = msg; el.className = 'toast toast-' + type + ' show'; setTimeout(() => el.classList.remove('show'), 3000); }
+function show(msg,type='info'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast toast-'+type+' show';setTimeout(()=>el.classList.remove('show'),3000)}
+
+async function submitAuth(ev){
+  ev.preventDefault();
+  const input=document.getElementById('authPass');
+  const btn=document.getElementById('authSubmit');
+  const error=document.getElementById('authError');
+  const password=input.value;
+  if(!password){error.textContent='请输入面板密码';input.focus();return}
+  btn.disabled=true;
+  btn.textContent='登录中...';
+  error.textContent='';
+  try{
+    const r=await fetch(BASE+'/auth.sh',{
+      method:'POST',
+      credentials:'same-origin',
+      body:new URLSearchParams({password})
+    });
+    const d=await r.json();
+    if(d.success){
+      authReady=true;
+      setAuthOverlay(false);
+      input.value='';
+      if(authResolve){authResolve(true);authResolve=null}
+      authPromptPromise=null;
+      show(d.message||'登录成功','ok');
+      await refresh();
+      await loadSettings();
+      return;
+    }
+    error.textContent=d.message||'登录失败';
+  }catch(_){
+    error.textContent='登录请求失败';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='进入控制台';
+  }
+}
+
+async function logoutPanel(){
+  try{
+    const r=await fetch(BASE+'/auth.sh',{
+      method:'POST',
+      credentials:'same-origin',
+      body:new URLSearchParams({action:'logout'})
+    });
+    const d=await r.json();
+    document.getElementById('authPass').value='';
+    resetAuthState('已退出登录，请重新输入面板密码');
+    show(d.message||'已退出登录','ok');
+  }catch(_){
+    show('退出登录失败','err');
+  }
+}
+
+function loadPrefs(){
+  const curBg=localStorage.getItem('bgImage')||'';
+  document.getElementById('bgInput').value=curBg.startsWith('http')?curBg:'';
+  document.querySelectorAll('.bg-preset').forEach(p=>p.classList.toggle('active',p.dataset.bg===curBg));
+  const opacity=localStorage.getItem('uiOpacity')||'1';
+  document.getElementById('opacitySlider').value=parseFloat(opacity)*100;
+  document.getElementById('opacityValue').textContent=Math.round(parseFloat(opacity)*100)+'%';
+}
+function applyBg(bg){
+  if(bg){localStorage.setItem('bgImage',bg);document.documentElement.style.setProperty('--bg-image','url('+bg+')')}
+  else{localStorage.removeItem('bgImage');document.documentElement.style.setProperty('--bg-image','none')}
+}
+function applyOpacity(v){
+  localStorage.setItem('uiOpacity',v);
+  document.documentElement.style.setProperty('--ui-opacity',v);
+}
+function loadBg(){try{const b=localStorage.getItem('bgImage');if(b)document.documentElement.style.setProperty('--bg-image','url('+b+')')}catch(e){}}
+function loadUiOpacity(){try{const o=localStorage.getItem('uiOpacity')||'1';document.documentElement.style.setProperty('--ui-opacity',o)}catch(e){}}
+
+document.querySelectorAll('.bg-preset').forEach(p=>p.addEventListener('click',function(){document.querySelectorAll('.bg-preset').forEach(x=>x.classList.remove('active'));this.classList.add('active');document.getElementById('bgInput').value='';applyBg(this.dataset.bg)}));
+document.getElementById('bgInput').addEventListener('change',function(){document.querySelectorAll('.bg-preset').forEach(x=>x.classList.remove('active'));applyBg(this.value.trim())});
+document.getElementById('opacitySlider').addEventListener('input',function(){document.getElementById('opacityValue').textContent=this.value+'%';applyOpacity(this.value/100)});
+document.getElementById('authForm').addEventListener('submit',submitAuth);
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  loadBg();
+  loadUiOpacity();
+  checkVer();
+  if(await ensureAuth()){
+    await refresh();
+    await loadSettings();
+  }
+});
 </script>
 </body>
 </html>

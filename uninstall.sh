@@ -13,6 +13,10 @@ echo "正在卸载锐捷认证 Web 管理面板..."
 rm -f /overlay/etc/init.d/ruijie-panel 2>/dev/null
 rm -f /etc/init.d/ruijie-panel 2>/dev/null
 
+# 删除面板认证与会话
+rm -rf /etc/ruijie-panel 2>/dev/null
+rm -rf /tmp/ruijie-panel.sessions 2>/dev/null
+
 # 删除 Web 文件（覆盖所有可能的安装路径）
 rm -rf /overlay/usr/www/ruijie-web 2>/dev/null
 rm -rf /mnt/sda1/ruijie-web 2>/dev/null
