@@ -154,10 +154,22 @@ panel_is_authenticated() {
 }
 
 panel_new_session_token() {
-    if command -v od >/dev/null 2>&1; then
+    if [ "${RUIJIE_PANEL_DISABLE_OD:-}" != "1" ] && command -v od >/dev/null 2>&1; then
         dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
+    elif command -v md5sum >/dev/null 2>&1; then
+        {
+            cat /proc/uptime /proc/version /proc/loadavg 2>/dev/null
+            date '+%s' 2>/dev/null
+            echo "$$"
+        } | md5sum | awk '{print $1}'
+    elif command -v sha256sum >/dev/null 2>&1; then
+        {
+            cat /proc/uptime /proc/version /proc/loadavg 2>/dev/null
+            date '+%s' 2>/dev/null
+            echo "$$"
+        } | sha256sum | awk '{print $1}' | cut -c 1-32
     else
-        date '+%s%N'
+        return 1
     fi
 }
 
@@ -216,7 +228,7 @@ read_post_body() {
 body_get_field() {
     _key="$1"
     _body="$2"
-    echo "$_body" | sed -n 's/.*'"$_key"'=\([^&]*\).*/\1/p'
+    printf '%s' "$_body" | tr '&' '\n' | sed -n "s/^${_key}=//p" | head -n 1
 }
 
 query_get_field() {

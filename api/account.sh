@@ -35,6 +35,11 @@ if [ "$METHOD" = "POST" ]; then
         exit 0
     fi
 
+    if [ -n "$_operator" ] && [ "$_operator" != "DianXin" ] && [ "$_operator" != "LianTong" ]; then
+        printf '{"success":false,"message":"运营商参数无效，请使用 DianXin 或 LianTong"}'
+        exit 0
+    fi
+
     load_config
     save_config "$_username" "$_password" "${ACCOUNT_TYPE:-student}"
     fix_config_perms
