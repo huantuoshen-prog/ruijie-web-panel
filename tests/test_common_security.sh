@@ -42,8 +42,13 @@ value="$(body_get_field "password" "username=good&password=a%3Db%26c")"
     && pass "body_get_field 保留 urlencoded 值供调用方解码" \
     || fail "body_get_field urlencoded 值处理错误: ${value:-<empty>}"
 
+token="$(panel_new_session_token 2>/dev/null || true)"
+printf '%s' "$token" | grep -qE '^[0-9a-f]{32}$' \
+    && pass "panel_new_session_token 生成 128 位随机 token" \
+    || fail "panel_new_session_token 未生成有效 token"
+
 # 安全随机源不可用时必须拒绝创建会话，不能退回到时间戳 token。
-token="$(RUIJIE_PANEL_DISABLE_OD=1 panel_new_session_token 2>/dev/null || true)"
+token="$(RUIJIE_PANEL_DISABLE_RANDOM=1 panel_new_session_token 2>/dev/null || true)"
 case "$token" in
     '')
         pass "panel_new_session_token 无安全随机源时拒绝创建 token"

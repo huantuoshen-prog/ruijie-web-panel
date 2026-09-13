@@ -58,9 +58,15 @@ panel_session_exists() {
     [ "$_expiry" -gt "$(panel_now_epoch)" ] 2>/dev/null || { rm -f "$_path"; return 1; }
 }
 panel_new_session_token() {
-    [ "${RUIJIE_PANEL_DISABLE_OD:-0}" != 1 ] || return 1
-    [ -r /dev/urandom ] && command -v od >/dev/null 2>&1 || return 1
-    dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
+    [ "${RUIJIE_PANEL_DISABLE_RANDOM:-0}" != 1 ] || return 1
+    [ -r /dev/urandom ] || return 1
+    if command -v od >/dev/null 2>&1; then
+        dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
+    elif command -v hexdump >/dev/null 2>&1; then
+        hexdump -v -n 16 -e '/1 "%02x"' /dev/urandom
+    else
+        return 1
+    fi
 }
 panel_create_session() {
     mkdir -p "$PANEL_SESSION_DIR" || return 1
