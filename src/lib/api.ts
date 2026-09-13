@@ -68,7 +68,8 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     };
 
     if (envelope.success === false) {
-      throw new ApiError(envelope.message || "请求失败。", response.status, payload);
+      const status = envelope.code === "UNAUTHENTICATED" ? 401 : response.status;
+      throw new ApiError(envelope.message || "请求失败。", status, payload);
     }
 
     if ("data" in envelope) {

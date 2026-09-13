@@ -436,6 +436,7 @@ function App() {
       ]);
 
       hydrateForms(nextStatus, nextAccount, nextSettings, nextHealth, nextRuntime);
+      setNotice((current) => (current?.tone === "error" ? null : current));
 
       if (includeLogs) {
         await refreshLogs(silent);
