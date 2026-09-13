@@ -205,8 +205,8 @@ function Surface(props: {
   eyebrow: string;
   title: string;
   description: string;
-  actions?: JSX.Element;
-  children: JSX.Element | JSX.Element[] | string;
+  actions?: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="surface">
@@ -274,6 +274,10 @@ function App() {
     proxyUrl: "",
     proxyUrlHttps: ""
   });
+  const [accountRevision, setAccountRevision] = useState("");
+  const [settingsRevision, setSettingsRevision] = useState("");
+  const [accountDirty, setAccountDirty] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [logSource, setLogSource] = useState<LogSource>("daemon");
   const [logLevel, setLogLevel] = useState<LogLevel>("");
@@ -361,16 +365,22 @@ function App() {
       setStatus(nextStatus);
       setHealth(nextHealth);
       setRuntime(nextRuntime);
-      setAccountForm((current) => ({
-        username: nextAccount.username || nextStatus.username || "",
-        password: current.password,
-        operator: nextAccount.operator || nextStatus.operator || "DianXin",
-        accountType: nextAccount.account_type || nextStatus.account_type || current.accountType
-      }));
-      setSettingsForm({
-        proxyUrl: nextSettings.proxy_url ?? "",
-        proxyUrlHttps: nextSettings.proxy_url_https ?? ""
-      });
+      setAccountRevision(nextAccount.revision ?? "");
+      setSettingsRevision(nextSettings.revision ?? "");
+      if (!accountDirty) {
+        setAccountForm((current) => ({
+          username: nextAccount.username || nextStatus.username || "",
+          password: current.password,
+          operator: nextAccount.operator || nextStatus.operator || "DianXin",
+          accountType: nextAccount.account_type || nextStatus.account_type || current.accountType
+        }));
+      }
+      if (!settingsDirty) {
+        setSettingsForm({
+          proxyUrl: nextSettings.proxy_url ?? "",
+          proxyUrlHttps: nextSettings.proxy_url_https ?? ""
+        });
+      }
     }
   );
 
@@ -549,6 +559,7 @@ function App() {
       ...current,
       [name]: value
     }));
+    setAccountDirty(true);
   };
 
   const handleSettingsInput = (
@@ -560,12 +571,13 @@ function App() {
       ...current,
       [name]: value
     }));
+    setSettingsDirty(true);
   };
 
   const handleSaveAccount = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!accountForm.username.trim() || !accountForm.password.trim()) {
+    if (!accountForm.username.trim() || (!accountForm.password && !accountRevision)) {
       setNotice({
         tone: "warning",
         message: "保存账号前需要同时填写用户名和密码。"
@@ -578,14 +590,16 @@ function App() {
     try {
       const result = await panelApi.saveAccount({
         username: accountForm.username.trim(),
-        password: accountForm.password.trim(),
-        operator: accountForm.operator
+        password: accountForm.password,
+        operator: accountForm.operator,
+        revision: accountRevision
       });
 
       setAccountForm((current) => ({
         ...current,
         password: ""
       }));
+      setAccountDirty(false);
 
       setNotice({
         tone: "success",
@@ -607,13 +621,15 @@ function App() {
     try {
       const result = await panelApi.saveSettings({
         proxy_url: settingsForm.proxyUrl,
-        proxy_url_https: settingsForm.proxyUrlHttps
+        proxy_url_https: settingsForm.proxyUrlHttps,
+        revision: settingsRevision
       });
 
       setNotice({
         tone: "success",
         message: result.message || "代理设置已保存。"
       });
+      setSettingsDirty(false);
 
       await refreshPanel(false, true);
     } catch (error) {
@@ -640,18 +656,14 @@ function App() {
     }
   };
 
-  const handleModeSwitch = async (operator: "DianXin" | "LianTong") => {
-    setBusyAction(`mode-${operator}`);
-
+  const handleAuthAction = async (action: "ensure" | "reauth" | "logout") => {
+    setBusyAction(`auth-${action}`);
     try {
-      const result = await panelApi.switchOperator(operator);
-      setNotice({
-        tone: "success",
-        message: result.message || `已切换到 ${operatorLabel(operator)}。`
-      });
+      const result = await panelApi.runAuth(action);
+      setNotice({ tone: "success", message: result.message || "认证操作已完成。" });
       await refreshPanel(true, false);
     } catch (error) {
-      handleRequestFailure(error, "切换网络模式失败。");
+      handleRequestFailure(error, "认证操作失败。");
     } finally {
       setBusyAction(null);
     }
@@ -861,28 +873,14 @@ function App() {
             </button>
           </div>
 
-          <div className="segmented-group">
+          <div className="quick-actions">
             <button
               type="button"
-              className={cn(
-                "segmented-group__button",
-                status?.operator === "DianXin" && "is-active"
-              )}
-              disabled={busyAction === "mode-DianXin" || authPhase !== "authenticated"}
-              onClick={() => void handleModeSwitch("DianXin")}
+              className="button button--secondary"
+              disabled={busyAction === "auth-reauth" || authPhase !== "authenticated"}
+              onClick={() => void handleAuthAction("reauth")}
             >
-              切到电信
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "segmented-group__button",
-                status?.operator === "LianTong" && "is-active"
-              )}
-              disabled={busyAction === "mode-LianTong" || authPhase !== "authenticated"}
-              onClick={() => void handleModeSwitch("LianTong")}
-            >
-              切到联通
+              重新认证
             </button>
           </div>
         </Surface>
@@ -1062,34 +1060,11 @@ function App() {
         </Surface>
 
         <Surface
-          eyebrow="快速切换"
-          title="运营商热切换"
-          description="不改账号资料，直接调用 `/ruijie-cgi/mode` 执行在线切换。"
+          eyebrow="应用说明"
+          title="保存与认证分开"
+          description="保存只写入配置。需要切换线路或立即更新校园网会话时，请在守护进程页面执行“重新认证”。"
         >
-          <div className="segmented-group">
-            <button
-              type="button"
-              className={cn(
-                "segmented-group__button",
-                status?.operator === "DianXin" && "is-active"
-              )}
-              disabled={busyAction === "mode-DianXin" || authPhase !== "authenticated"}
-              onClick={() => void handleModeSwitch("DianXin")}
-            >
-              电信
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "segmented-group__button",
-                status?.operator === "LianTong" && "is-active"
-              )}
-              disabled={busyAction === "mode-LianTong" || authPhase !== "authenticated"}
-              onClick={() => void handleModeSwitch("LianTong")}
-            >
-              联通
-            </button>
-          </div>
+          <p className="surface__body">后台刷新不会覆盖正在编辑的账号或代理字段。</p>
         </Surface>
       </div>
     </div>
@@ -1121,7 +1096,7 @@ function App() {
       <Surface
         eyebrow="服务控制"
         title="守护进程动作"
-        description="把启动、停止和重启放在统一控制栏里，减少误操作。"
+        description="停止只暂停自动重连；“断开认证”会让路由器下线。开机自启由系统服务的 enable/disable 单独控制。"
       >
         <div className="quick-actions">
           <button
@@ -1147,6 +1122,22 @@ function App() {
             onClick={() => void handleDaemonAction("stop")}
           >
             停止
+          </button>
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={busyAction === "auth-reauth" || authPhase !== "authenticated"}
+            onClick={() => void handleAuthAction("reauth")}
+          >
+            重新认证
+          </button>
+          <button
+            type="button"
+            className="button button--danger"
+            disabled={busyAction === "auth-logout" || authPhase !== "authenticated"}
+            onClick={() => void handleAuthAction("logout")}
+          >
+            断开认证
           </button>
         </div>
       </Surface>

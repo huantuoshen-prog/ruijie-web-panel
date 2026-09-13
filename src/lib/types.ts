@@ -32,6 +32,11 @@ export interface StatusResponse {
   last_auth: string;
   version: string;
   message: string;
+  revision?: string;
+  desired_running?: boolean;
+  process_running?: boolean;
+  observed_at?: string;
+  stale?: boolean;
 }
 
 export interface AccountResponse {
@@ -39,11 +44,13 @@ export interface AccountResponse {
   operator: string;
   account_type: string;
   proxy_url?: string;
+  revision?: string;
 }
 
 export interface SettingsResponse {
   proxy_url: string;
   proxy_url_https: string;
+  revision?: string;
 }
 
 export interface LogLine {
@@ -64,6 +71,7 @@ export interface ActionResponse {
   message: string;
   operator?: string;
   pid?: string;
+  code?: string;
 }
 
 export interface HealthSnapshot {

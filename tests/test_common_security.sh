@@ -42,23 +42,14 @@ value="$(body_get_field "password" "username=good&password=a%3Db%26c")"
     && pass "body_get_field 保留 urlencoded 值供调用方解码" \
     || fail "body_get_field urlencoded 值处理错误: ${value:-<empty>}"
 
-# 强制跳过 od 分支，覆盖 fallback token 生成逻辑。
+# 安全随机源不可用时必须拒绝创建会话，不能退回到时间戳 token。
 token="$(RUIJIE_PANEL_DISABLE_OD=1 panel_new_session_token 2>/dev/null || true)"
 case "$token" in
-    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*)
-        pass "panel_new_session_token 无 od 时仍生成哈希 token"
+    '')
+        pass "panel_new_session_token 无安全随机源时拒绝创建 token"
         ;;
     *)
-        fail "panel_new_session_token 无 od 时 token 异常: ${token:-<empty>}"
-        ;;
-esac
-
-case "$token" in
-    ''|*[!0-9]*)
-        pass "panel_new_session_token fallback 不再是纯时间戳"
-        ;;
-    *)
-        fail "panel_new_session_token fallback 仍是纯数字: $token"
+        fail "panel_new_session_token 在禁用安全随机源后仍返回 token: $token"
         ;;
 esac
 

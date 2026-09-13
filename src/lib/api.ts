@@ -58,6 +58,38 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(message, response.status, payload);
   }
 
+  if (typeof payload === "object" && payload !== null && "success" in payload) {
+    const envelope = payload as {
+      success?: boolean;
+      code?: string;
+      message?: string;
+      data?: unknown;
+      schema_version?: number;
+    };
+
+    if (envelope.success === false) {
+      throw new ApiError(envelope.message || "请求失败。", response.status, payload);
+    }
+
+    if ("data" in envelope) {
+      const data = envelope.data;
+      if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+        return {
+          ...data,
+          success: envelope.success,
+          code: envelope.code,
+          message: envelope.message
+        } as T;
+      }
+      return {
+        success: envelope.success,
+        code: envelope.code,
+        message: envelope.message,
+        data
+      } as T;
+    }
+  }
+
   return payload as T;
 }
 
@@ -97,6 +129,7 @@ export const panelApi = {
     username: string;
     password: string;
     operator: string;
+    revision: string;
   }): Promise<ActionResponse> {
     return requestJson<ActionResponse>("account", formRequest(payload));
   },
@@ -106,6 +139,7 @@ export const panelApi = {
   saveSettings(payload: {
     proxy_url: string;
     proxy_url_https: string;
+    revision: string;
   }): Promise<ActionResponse> {
     return requestJson<ActionResponse>("settings", formRequest(payload));
   },
@@ -144,7 +178,7 @@ export const panelApi = {
   runDaemon(action: "start" | "stop" | "restart"): Promise<ActionResponse> {
     return requestJson<ActionResponse>("daemon", formRequest({ action }));
   },
-  switchOperator(operator: "DianXin" | "LianTong"): Promise<ActionResponse> {
-    return requestJson<ActionResponse>("mode", formRequest({ operator }));
+  runAuth(action: "ensure" | "reauth" | "logout"): Promise<ActionResponse> {
+    return requestJson<ActionResponse>("auth-action", formRequest({ action }));
   }
 };

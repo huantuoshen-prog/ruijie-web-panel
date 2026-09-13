@@ -1,50 +1,16 @@
 #!/bin/sh
-# ========================================
-# API: 系统设置
-# GET  /ruijie-cgi/settings  → 读取代理设置
-# POST /ruijie-cgi/settings  → 保存代理设置
-# ========================================
-
 . "$(dirname "$0")/../api/common.sh"
-
-panel_require_auth || exit 0
-
-echo "Content-Type: application/json; charset=utf-8"
-echo ""
-
-SCRIPT_DIR=$(find_ruijie_dir)
-if [ -z "$SCRIPT_DIR" ]; then
-    printf '{"success":false,"message":"锐捷脚本未安装"}'
-    exit 0
-fi
-
-. "${SCRIPT_DIR}/lib/common.sh" 2>/dev/null
-. "${SCRIPT_DIR}/lib/config.sh" 2>/dev/null
-
-METHOD="${REQUEST_METHOD:-GET}"
-
-if [ "$METHOD" = "POST" ]; then
-    _body=$(read_post_body)
-
-    _proxy=$(urldecode "$(body_get_field "proxy_url" "$_body")")
-    _proxy_https=$(urldecode "$(body_get_field "proxy_url_https" "$_body")")
-
-    _cfg_tmp=$(mktemp)
-    if [ -f "$CONFIG_FILE" ]; then
-        sed -e "s|^PROXY_URL=.*|PROXY_URL=$_proxy|" \
-            -e "s|^PROXY_URL_HTTPS=.*|PROXY_URL_HTTPS=$_proxy_https|" \
-            "$CONFIG_FILE" > "$_cfg_tmp" 2>/dev/null && mv "$_cfg_tmp" "$CONFIG_FILE"
-        chmod 600 "$CONFIG_FILE" 2>/dev/null
-        _msg=$(json_esc "设置已保存")
-        printf '{"success":true,"message":"%s"}' "$_msg"
-    else
-        rm -f "$_cfg_tmp"
-        _msg=$(json_esc "配置文件不存在，请先配置账号")
-        printf '{"success":false,"message":"%s"}' "$_msg"
-    fi
-else
-    load_config
-    _pe=$(json_esc "${PROXY_URL:-}")
-    _phe=$(json_esc "${PROXY_URL_HTTPS:-}")
-    printf '{"proxy_url":"%s","proxy_url_https":"%s"}' "$_pe" "$_phe"
-fi
+panel_require_auth
+case "${REQUEST_METHOD:-GET}" in
+GET) _result="$(core_call config get)" || api_error 500 CORE_FAILURE '读取配置失败'; http_json 200 "$_result";;
+POST)
+    require_method POST; core_require_compatible; _body="$(read_post_body)"
+    _proxy="$(urldecode "$(body_get_field proxy_url "$_body")")"; _proxy_https="$(urldecode "$(body_get_field proxy_url_https "$_body")")"; _revision="$(urldecode "$(body_get_field revision "$_body")")"
+    valid_value "$_proxy" && valid_value "$_proxy_https" || api_error 400 INVALID_ARGUMENT '代理地址不能包含换行'
+    _current="$(core_call config get)" || api_error 500 CORE_FAILURE '读取配置失败'
+    _payload="$(jq -cn --argjson current "$_current" --arg proxy "$_proxy" --arg proxy_https "$_proxy_https" --arg revision "$_revision" '$current.data + {password:"__PRESERVE__",proxy_url:$proxy,proxy_url_https:$proxy_https,revision:$revision}')"
+    _result="$(printf '%s' "$_payload" | core_call config set)"; _exit=$?
+    case "$_exit" in 0) http_json 200 "$_result";; 3) http_json 409 "$_result";; *) http_json 400 "$_result";; esac
+    ;;
+*) api_error 400 INVALID_METHOD 'expected GET or POST';;
+esac

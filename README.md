@@ -1,11 +1,17 @@
-# 锐捷认证 Web 管理面板
+# 锐捷认证 Web 管理面板：OpenWrt 校园网路由器管理界面
 
-> 锐捷认证脚本的可选图形界面，在浏览器里管理账号、守护进程、日志和健康监听。
+> 面向广东科学技术职业学院（广科院、GDSTVC）校园网用户的 OpenWrt 锐捷认证管理面板。在浏览器里查看网络状态、管理自动重连、账号配置与日志。
 
 [![CI](https://github.com/huantuoshen-prog/ruijie-web-panel/actions/workflows/ci.yml/badge.svg)](https://github.com/huantuoshen-prog/ruijie-web-panel/actions)
 [![版本](https://img.shields.io/badge/version-v3.1-blue)](https://github.com/huantuoshen-prog/ruijie-web-panel)
 
 **本仓库依赖主仓库 [ruijie-gdstvc-autologin](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin)。请先安装并配置主脚本，再安装这个面板。**
+
+## 这是做什么的？
+
+这是运行在 OpenWrt、iStoreOS 或 ImmortalWrt 路由器上的本地网页面板。它服务于锐捷 Web 认证、校园网自动登录和宿舍路由器管理；手机或电脑浏览器访问路由器地址即可使用。
+
+关键词：OpenWrt 锐捷认证、校园网自动登录、广东科学技术职业学院、广科院、GDSTVC、iStoreOS、ImmortalWrt、路由器 Web 面板。
 
 ## 快速入口
 
@@ -103,6 +109,10 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 |------|--------|------|
 | **ruijie-gdstvc-autologin** | [链接](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin) | 主仓库，核心认证脚本 |
 | Qclaw | [链接](https://github.com/qiuzhi2046/Qclaw) | OpenClaw 桌面管家（非本项目） |
+
+## 反馈与贡献
+
+欢迎新生和路由器爱好者反馈安装体验、固件兼容性和文档问题。提交 issue 时请删除账号、密码、MAC 地址、内网 IP、会话令牌和完整认证链接。
 
 ## 许可证
 
