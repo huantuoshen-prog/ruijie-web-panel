@@ -11,7 +11,19 @@ MAX_BODY_BYTES=16384
 
 http_json() {
     _status="$1"; _body="$2"
-    [ "$_status" = "200" ] || printf 'Status: %s\r\n' "$_status"
+    if [ "$_status" != "200" ]; then
+        case "$_status" in
+            400) _status_text='400 Bad Request' ;;
+            401) _status_text='401 Unauthorized' ;;
+            409) _status_text='409 Conflict' ;;
+            429) _status_text='429 Too Many Requests' ;;
+            500) _status_text='500 Internal Server Error' ;;
+            502) _status_text='502 Bad Gateway' ;;
+            504) _status_text='504 Gateway Timeout' ;;
+            *) _status_text="$_status" ;;
+        esac
+        printf 'Status: %s\r\n' "$_status_text"
+    fi
     printf 'Content-Type: application/json; charset=utf-8\r\nCache-Control: no-store\r\n\r\n%s' "$_body"
 }
 api_error() {
