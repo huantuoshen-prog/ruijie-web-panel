@@ -8,6 +8,7 @@ TARGET=/overlay/usr/www/ruijie-web
 STAGE="${TARGET}.next.$$"
 BACKUP="${TARGET}.rollback"
 PREVIOUS_INIT="${BACKUP}.init"
+AUTH_FILE=/etc/ruijie-panel/auth.conf
 
 fail() { printf '%s\n' "panel install failed: $*" >&2; exit 1; }
 [ -f /etc/config/uhttpd ] || fail 'uhttpd is required'
@@ -17,6 +18,34 @@ LAN_IP="$(uci get network.lan.ipaddr 2>/dev/null)" || fail 'LAN address is unava
 [ -n "$LAN_IP" ] && [ "$LAN_IP" != '0.0.0.0' ] || fail 'a specific LAN address is required'
 [ -f "$MANIFEST" ] || fail 'manifest.sha256 is missing; use a fixed release bundle'
 (cd "$SOURCE_DIR" && sha256sum -c manifest.sha256) || fail 'bundle checksum verification failed'
+
+# An upgrade retains the existing password. A first install must create one
+# before exposing the management endpoint. Tests and unattended installs may
+# supply PANEL_PASSWORD; normal use reads it without echoing it.
+new_password=''
+if [ ! -f "$AUTH_FILE" ]; then
+    if [ -n "${PANEL_PASSWORD:-}" ]; then
+        new_password="$PANEL_PASSWORD"
+    elif [ -t 0 ]; then
+        printf '%s' 'Create the Web panel password: ' >&2
+        stty -echo
+        IFS= read -r new_password
+        stty echo
+        printf '\n' >&2
+        printf '%s' 'Confirm the Web panel password: ' >&2
+        stty -echo
+        IFS= read -r confirmation
+        stty echo
+        printf '\n' >&2
+        [ "$new_password" = "$confirmation" ] || fail 'password confirmation did not match'
+    else
+        fail 'first install needs a panel password; run interactively or set PANEL_PASSWORD in the install environment'
+    fi
+    [ -n "$new_password" ] || fail 'panel password cannot be empty'
+    if printf '%s' "$new_password" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+        fail 'panel password cannot contain control characters'
+    fi
+fi
 
 mkdir -p "$STAGE/api" "$STAGE/ruijie-cgi"
 cp "$SOURCE_DIR"/dist/* "$STAGE/"
@@ -61,4 +90,10 @@ curl --noproxy '*' -fsS --max-time 5 "http://${LAN_IP}:8080/ruijie-cgi/auth" >/d
     }
     fail 'health check failed; previous panel restored'
 }
+if [ -n "$new_password" ]; then
+    mkdir -p /etc/ruijie-panel || fail 'could not create panel authentication directory'
+    umask 077
+    printf 'PASSWORD_SHA256=%s\n' "$(printf '%s' "$new_password" | sha256sum | awk '{print $1}')" > "$AUTH_FILE" \
+        && chmod 600 "$AUTH_FILE" || fail 'could not save panel password'
+fi
 printf '%s\n' "panel installed at $TARGET; previous release kept at $BACKUP"
