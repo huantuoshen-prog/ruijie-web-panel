@@ -22,13 +22,13 @@ TMPDIR="$(mktemp -d)"
 cleanup() { rm -rf "$TMPDIR"; }
 trap cleanup EXIT
 
-PANEL_SESSION_DIR="${TMPDIR}/sessions"
+RUIJIE_PANEL_SESSION_DIR="${TMPDIR}/sessions"
 RUIJIE_PANEL_SESSION_MAX_AGE=2592000
 
 . "${PROJECT_DIR}/api/common.sh"
 
 panel_new_session_token() {
-    printf '%s' 'abc123'
+    printf '%s' '0123456789abcdef0123456789abcdef'
 }
 
 echo "========== 面板会话持久化测试 =========="
@@ -44,11 +44,11 @@ else
 fi
 
 token="$(panel_create_session)"
-[ "$token" = "abc123" ] \
+[ "$token" = "0123456789abcdef0123456789abcdef" ] \
     && pass "创建会话时返回预期 token" \
     || fail "创建会话时 token 异常: ${token:-<empty>}"
 
-session_file="${PANEL_SESSION_DIR}/abc123"
+session_file="${PANEL_SESSION_DIR}/$token"
 [ -f "$session_file" ] \
     && pass "创建会话后写入 session 文件" \
     || fail "创建会话后未写入 session 文件"
@@ -63,14 +63,14 @@ case "$expiry_value" in
         ;;
 esac
 
-if panel_session_exists "abc123"; then
+if panel_session_exists "$token"; then
     pass "未过期 session 仍被识别为有效"
 else
     fail "未过期 session 未被识别为有效"
 fi
 
 printf '1' > "$session_file"
-if panel_session_exists "abc123"; then
+if panel_session_exists "$token"; then
     fail "已过期 session 仍被识别为有效"
 else
     pass "已过期 session 会被拒绝"

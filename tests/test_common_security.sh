@@ -22,7 +22,7 @@ TMPDIR="$(mktemp -d)"
 cleanup() { rm -rf "$TMPDIR"; }
 trap cleanup EXIT
 
-PANEL_SESSION_DIR="${TMPDIR}/sessions"
+RUIJIE_PANEL_SESSION_DIR="${TMPDIR}/sessions"
 . "${PROJECT_DIR}/api/common.sh"
 
 echo "========== common.sh 安全辅助函数测试 =========="

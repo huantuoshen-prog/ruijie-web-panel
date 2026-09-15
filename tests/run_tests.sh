@@ -8,7 +8,9 @@ set -e
 
 TEST_DIR="$(cd "$(dirname "${0}")" && pwd)"
 
+failed=0
 for test_file in "${TEST_DIR}"/test_*.sh; do
     [ -f "$test_file" ] || continue
-    bash "$test_file"
+    bash "$test_file" || failed=1
 done
+exit "$failed"
