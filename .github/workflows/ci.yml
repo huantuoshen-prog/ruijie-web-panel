@@ -42,8 +42,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: huantuoshen-prog/ruijie-gdstvc-autologin
+          ref: 4210a849783aa11cbfb426dae07434cceabeebaf
+          path: .test-core
+
       - name: Run web panel tests
-        run: bash tests/run_tests.sh
+        run: |
+          chmod +x .test-core/ruijiectl
+          RUIJIECTL="$PWD/.test-core/ruijiectl" bash tests/run_tests.sh
 
       - name: Session entropy regressions
         if: ${{ !cancelled() }}
