@@ -7,6 +7,21 @@ on:
     branches: [main]
 
 jobs:
+  real-core-config:
+    name: Real core CGI configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: huantuoshen-prog/ruijie-gdstvc-autologin
+          ref: 4210a849783aa11cbfb426dae07434cceabeebaf
+          path: .test-core
+      - name: Test account operations against the pinned real core
+        run: |
+          chmod +x .test-core/ruijiectl
+          RUIJIECTL="$PWD/.test-core/ruijiectl" bash tests/integration/real_core_config.sh
+
   shellcheck:
     name: ShellCheck Lint
     runs-on: ubuntu-latest
