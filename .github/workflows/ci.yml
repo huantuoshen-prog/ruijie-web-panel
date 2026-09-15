@@ -31,6 +31,7 @@ jobs:
         run: bash tests/run_tests.sh
 
       - name: Session entropy regressions
+        if: ${{ !cancelled() }}
         run: sh tests/test_session_entropy.sh
 
   frontend:
