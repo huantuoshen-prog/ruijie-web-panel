@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: huantuoshen-prog/ruijie-gdstvc-autologin
-          ref: 4210a849783aa11cbfb426dae07434cceabeebaf
+          ref: 30a3062b2b3f5575568aeba6a83f755b8b2c7b38
           path: .test-core
       - name: Test account operations against the pinned real core
         run: |
@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: huantuoshen-prog/ruijie-gdstvc-autologin
-          ref: 4210a849783aa11cbfb426dae07434cceabeebaf
+          ref: 30a3062b2b3f5575568aeba6a83f755b8b2c7b38
           path: .test-core
 
       - name: Run web panel tests

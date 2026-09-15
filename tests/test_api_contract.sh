@@ -29,7 +29,7 @@ run_cgi() {
         RUIJIE_PANEL_AUTH_DIR="$RUIJIE_PANEL_AUTH_DIR" \
         RUIJIE_PANEL_SESSION_DIR="$RUIJIE_PANEL_SESSION_DIR" \
         RUIJIE_PANEL_RATE_DIR="$RUIJIE_PANEL_RATE_DIR" \
-        sh "$ROOT/api/$script.sh"
+        sh "$ROOT/api/$script"
 }
 body() { awk '{ sub(/\r$/, ""); if (seen) print; else if ($0 == "") seen=1; }'; }
 header() { awk -v wanted="$2" '{ sub(/\r$/, ""); if ($0 ~ ("^" wanted ": ")) { sub("^" wanted ": ", ""); print; exit } }' <<<"$1"; }
