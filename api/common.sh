@@ -85,6 +85,9 @@ panel_create_session() {
     chmod 700 "$PANEL_SESSION_DIR" 2>/dev/null || return 1
     umask 077
     _token="$(panel_new_session_token)" || return 1
+    # A successful pipeline can still have produced partial or empty entropy.
+    [ "${#_token}" -eq 32 ] || return 1
+    case "$_token" in *[!0-9a-f]*) return 1 ;; esac
     _tmp="$(mktemp "${PANEL_SESSION_DIR}/.tmp.XXXXXX")" || return 1
     printf '%s' "$(( $(panel_now_epoch) + $(panel_session_max_age) ))" > "$_tmp" && chmod 600 "$_tmp" && mv -f "$_tmp" "$(panel_session_path "$_token")" || { rm -f "$_tmp"; return 1; }
     printf '%s' "$_token"

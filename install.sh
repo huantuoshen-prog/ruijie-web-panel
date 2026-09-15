@@ -12,7 +12,9 @@ PREVIOUS_INIT="${BACKUP}.init"
 fail() { printf '%s\n' "panel install failed: $*" >&2; exit 1; }
 [ -f /etc/config/uhttpd ] || fail 'uhttpd is required'
 [ -x /etc/ruijie/ruijiectl ] || fail 'core 4.x must be installed before the panel'
-for command in jq sha256sum; do command -v "$command" >/dev/null 2>&1 || fail "missing dependency: $command"; done
+for command in jq sha256sum curl uci; do command -v "$command" >/dev/null 2>&1 || fail "missing dependency: $command"; done
+LAN_IP="$(uci get network.lan.ipaddr 2>/dev/null)" || fail 'LAN address is unavailable'
+[ -n "$LAN_IP" ] && [ "$LAN_IP" != '0.0.0.0' ] || fail 'a specific LAN address is required'
 [ -f "$MANIFEST" ] || fail 'manifest.sha256 is missing; use a fixed release bundle'
 (cd "$SOURCE_DIR" && sha256sum -c manifest.sha256) || fail 'bundle checksum verification failed'
 
@@ -49,7 +51,7 @@ fi || {
     }
     fail 'panel service did not start; previous panel restored'
 }
-curl -fsS --max-time 5 http://127.0.0.1:8080/ruijie-cgi/auth >/dev/null || {
+curl --noproxy '*' -fsS --max-time 5 "http://${LAN_IP}:8080/ruijie-cgi/auth" >/dev/null || {
     /etc/init.d/ruijie-panel stop || true
     [ -d "$BACKUP" ] && {
         rm -rf "$TARGET"
