@@ -71,6 +71,31 @@ jobs:
             printf "%s" "$response" | grep -q "\"success\":true"
             curl --noproxy "*" -fsS -H "Cookie: $cookie" http://127.0.0.1:8080/ruijie-cgi/account | jq -e ".success and .schema_version == 2" >/dev/null
             ls -l /etc/ruijie-panel/auth.conf | grep -q "^-rw-------"
+
+            target=/overlay/usr/www/ruijie-web
+            [ -d /overlay ] || target=/www/ruijie-web
+            printf old-release > "$target/release-marker"
+            /etc/init.d/ruijie-panel stop
+            /etc/init.d/ruijie-panel disable
+            /tmp/panel/ruijie-panel/install.sh
+            ! /etc/init.d/ruijie-panel enabled
+            ! uci -q get uhttpd.ruijie >/dev/null
+            [ -d "${target}.rollback" ]
+            "$target/rollback.sh"
+            grep -q old-release "$target/release-marker"
+            ! /etc/init.d/ruijie-panel enabled
+            ! uci -q get uhttpd.ruijie >/dev/null
+
+            mkdir -p /tmp/failbin
+            printf "#!/bin/sh\nexit 1\n" > /tmp/failbin/curl
+            chmod 755 /tmp/failbin/curl
+            if PATH="/tmp/failbin:$PATH" /tmp/panel/ruijie-panel/install.sh; then
+              echo "install unexpectedly passed a failed health check" >&2
+              exit 1
+            fi
+            grep -q old-release "$target/release-marker"
+            ! /etc/init.d/ruijie-panel enabled
+            ! uci -q get uhttpd.ruijie >/dev/null
           '
       - name: Show OpenWrt logs on failure
         if: ${{ failure() }}
