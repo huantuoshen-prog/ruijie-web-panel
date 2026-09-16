@@ -14,6 +14,8 @@ cp "$ROOT"/dist/* "$STAGE/ruijie-panel/dist/"
 cp "$ROOT"/api/*.sh "$STAGE/ruijie-panel/api/"
 cp "$ROOT"/init.d/ruijie-panel "$STAGE/ruijie-panel/init.d/"
 cp "$ROOT"/install.sh "$ROOT"/uninstall.sh "$STAGE/ruijie-panel/"
+chmod 755 "$STAGE/ruijie-panel"/api/*.sh "$STAGE/ruijie-panel/init.d/ruijie-panel" \
+    "$STAGE/ruijie-panel/install.sh" "$STAGE/ruijie-panel/uninstall.sh"
 printf 'core_version=4.0.0\ncore_api_schema=2\ncore_commit=%s\npanel_api_schema=2\n' "$CORE_COMMIT" > "$STAGE/ruijie-panel/compatibility.conf"
 printf 'component=panel\nversion=%s\nsource_commit=%s\nbuild_time=%s\napi_schema=2\n' \
     "$VERSION" "$SOURCE_COMMIT" "$BUILD_TIME" > "$STAGE/ruijie-panel/build-info.conf"
