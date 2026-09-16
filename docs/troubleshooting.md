@@ -7,17 +7,20 @@
 解决：
 
 ```bash
-cd /etc/ruijie && sh setup.sh
+/etc/ruijie/ruijiectl runtime
 ```
 
-## `wget: command not found`
+## 下载或安装失败
 
-使用 `curl`：
+只使用 GitHub Release 中的完整组合包。不要下载单独的 `install.sh`，因为安装器会拒绝缺少清单和配套文件的目录。
 
 ```bash
-curl -LO https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/install.sh
-chmod +x install.sh && sh install.sh
+curl -fLO https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/v4.0.0/ruijie-openwrt-bundle.tar.gz
+curl -fLO https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/v4.0.0/SHA256SUMS
+grep ' ruijie-openwrt-bundle.tar.gz$' SHA256SUMS | sha256sum -c -
 ```
+
+完整解压和安装步骤见 [安装文档](./install.md)。安装器不会自动修改 `opkg` 软件源；缺少依赖时请按固件自己的软件源配置处理。
 
 ## 页面打不开
 
@@ -48,8 +51,7 @@ netstat -tlnp | grep 8080
 如果面板显示离线：
 
 ```bash
-cd /etc/ruijie
-./ruijie.sh --status
+/etc/ruijie/ruijiectl status
 tail -f /var/log/ruijie-daemon.log
 ```
 

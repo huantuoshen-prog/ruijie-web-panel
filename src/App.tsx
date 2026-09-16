@@ -763,6 +763,13 @@ function App() {
   };
 
   const statusTone = status ? networkTone(status.online) : "warning";
+  const observedEpoch = Number(status?.observed_at);
+  const observedAt = Number.isFinite(observedEpoch) && observedEpoch > 0
+    ? new Date(observedEpoch * 1000).toLocaleString("zh-CN", { hour12: false })
+    : status?.observed_at
+      ? String(status.observed_at)
+      : "时间未知";
+  const statusFreshness = status?.stale ? `状态已过期 · ${observedAt}` : `采集于 ${observedAt}`;
   const daemonStatusTone = status
     ? daemonTone(status.daemon_state, status.daemon_running)
     : "neutral";
@@ -794,8 +801,16 @@ function App() {
       <div className="metric-grid">
         <MetricCard
           eyebrow="网络状态"
-          value={status?.online ? "已连接" : authPhase === "checking" ? "检测中" : "未连接"}
-          detail={status ? operatorLabel(status.operator) : "等待后端状态"}
+          value={
+            status?.online === true
+              ? "已连接"
+              : status?.online === false
+                ? "未连接"
+                : authPhase === "checking"
+                  ? "检测中"
+                  : "状态未知"
+          }
+          detail={status ? `${operatorLabel(status.operator)} · ${statusFreshness}` : "等待后端状态"}
           tone={statusTone}
         />
         <MetricCard
@@ -1434,7 +1449,7 @@ function App() {
                 ["内核", runtime?.kernel || "—"],
                 ["架构", runtime?.arch || "—"],
                 ["Shell", runtime?.shell || "—"],
-                ["后台能力", runtime?.nohup_backend || "—"],
+                ["服务管理", runtime?.procd_present ? "procd 可用" : "procd 不可用"],
                 ["脚本目录", runtime?.script_dir || "—"],
                 ["配置路径", runtime?.config_file || "—"],
                 ["健康日志", runtime?.health_logfile || "—"]

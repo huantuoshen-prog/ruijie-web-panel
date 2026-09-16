@@ -1,117 +1,106 @@
-# 安装文档
+# OpenWrt 安装、升级与回滚
+
+面板仅支持 OpenWrt、iStoreOS、ImmortalWrt 及使用 `procd`、`uhttpd` 的衍生固件。安装阶段不会发起校园网认证，也不会执行认证下线。
 
 ## 系统要求
 
-## 让 Agent 帮你安装
+- 已有可用的 LAN 地址，且面板只绑定该地址的 `8080` 端口
+- 固件提供 `procd`、`uhttpd`、`uci`
+- 已安装 `bash`、`curl`、`jq`、`flock`、`sha256sum`、`tar`
+- 至少约 10 MB 可用空间，建议 128 MB 内存
 
-如果你想把主脚本前置检查、自动安装和安装后验证一次性交给通用 Agent，直接复制：
-[AGENT_INSTALL_PROMPT.md](./AGENT_INSTALL_PROMPT.md)
+安装器不会修改固件软件源。缺少依赖时会明确停止，请根据自己的固件来源安装依赖后重试。
 
-如果主仓库还没装好，请先使用主仓库的安装 Prompt：
-[ruijie-gdstvc-autologin / AGENT_INSTALL_PROMPT.md](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
+## 使用固定发布包
 
-这个 Prompt 默认假设面板部署在路由器上；如果 Agent 当前不在路由器终端，它应该先引导你切到 SSH / TTYD 终端，或要求一个可用 SSH 目标，而不是读取本地电脑的 `/etc/ruijie`。
+不要逐个下载 `main` 分支中的文件。完整组合包固定了核心与面板的准确提交，并带有逐文件校验值。
 
-### 硬件
+以下命令以 `v4.0.0` 为例。在路由器 SSH 或 TTYD 终端执行：
 
-| 项目 | 最低要求 | 推荐 |
-|------|----------|------|
-| 路由器 | 64MB RAM | 128MB RAM |
-| 存储 | 2MB 可用 | 10MB 可用 |
-| CPU | 任意 | ARM / x86 均可 |
+```sh
+cd /tmp
+VERSION=v4.0.0
+BASE="https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/$VERSION"
+curl -fLO "$BASE/ruijie-openwrt-bundle.tar.gz"
+curl -fLO "$BASE/SHA256SUMS"
+grep ' ruijie-openwrt-bundle.tar.gz$' SHA256SUMS | sha256sum -c -
 
-### 软件
-
-- OpenWrt / iStoreOS / ImmortalWrt 或其他衍生固件
-- `uhttpd`
-- `/bin/sh`
-- `wget` 或 `curl`
-
-### 前置条件
-
-- 已安装主仓库 `ruijie-gdstvc-autologin`
-- 已完成主脚本的 `setup.sh`
-
-## 自动安装（推荐）
-
-```bash
-wget -O /tmp/install.sh \
-  https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/install.sh
-chmod +x /tmp/install.sh && sh /tmp/install.sh
+mkdir -p /tmp/ruijie-release
+tar -xzf ruijie-openwrt-bundle.tar.gz -C /tmp/ruijie-release
+cd /tmp/ruijie-release/ruijie-openwrt-bundle
+sha256sum -c manifest.sha256
 ```
 
-安装脚本会自动：
+先安装核心，再安装面板：
 
-- 选择安装路径
-- 下载 `dist/` 静态产物
-- 部署 CGI 脚本和 `ruijie-cgi` 路由
-- 初始化独立面板密码
-- 注册并启动 `ruijie-panel` 服务
+```sh
+mkdir -p /tmp/ruijie-core /tmp/ruijie-panel
+tar -xzf core.tar.gz -C /tmp/ruijie-core
+tar -xzf panel.tar.gz -C /tmp/ruijie-panel
 
-## 手动安装
+cd /tmp/ruijie-core/ruijie-core
+sha256sum -c manifest.sha256
+sh install.sh
 
-```bash
-mkdir -p /overlay/usr/www/ruijie-web/api
-cd /overlay/usr/www/ruijie-web
-
-wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/dist/index.html -O index.html
-wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/dist/app.js -O app.js
-wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/dist/app.css -O app.css
-wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/dist/favicon.ico -O favicon.ico
-wget https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/uninstall.sh
-
-for f in auth.sh account.sh common.sh daemon.sh health-log.sh health.sh log.sh mode.sh runtime.sh settings.sh status.sh; do
-  wget "https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/api/$f" -O "api/$f"
-done
-
-mkdir -p ruijie-cgi
-for name in auth account daemon health health-log log mode runtime settings status; do
-  ln -sf "../api/${name}.sh" "ruijie-cgi/${name}"
-done
-
-chmod +x api/*.sh uninstall.sh
+cd /tmp/ruijie-panel/ruijie-panel
+sha256sum -c manifest.sha256
+sh install.sh
 ```
 
-面板密码初始化示例：
+首次安装面板会要求输入两次独立的面板密码。这个密码只用于访问管理页面，不是校园网密码。
 
-```bash
-mkdir -p /etc/ruijie-panel
-printf 'PASSWORD_SHA256=%s\n' "$(printf 'panel-secret' | sha256sum | awk '{print $1}')" > /etc/ruijie-panel/auth.conf
-chmod 600 /etc/ruijie-panel/auth.conf
+安装完成后，浏览器访问：
+
+```text
+http://路由器LAN地址:8080/
 ```
 
-## USB 安装
+## 升级行为
 
-如果 overlay 空间不足，可以装到 USB：
+- 核心与面板都会先校验完整发布包，再切换文件。
+- 账号配置和面板密码不会被代码升级覆盖。
+- 升级前处于停用或停止状态的服务，升级后仍保持原状态。
+- 最近一个完整版本会保留在同一存储位置，供回滚使用。
+- 若切换后的服务健康检查失败，安装器会自动恢复上一版。
 
-```bash
-mount /dev/sda1 /mnt/sda1
-cd /mnt/sda1
-mkdir -p ruijie-web/api
+核心安装器若发现无法识别的旧守护进程或旧 `rc.local`、cron 启动项，会在修改任何文件前停止。这种迁移应留到计划维护时段处理。
+
+## 手动回滚
+
+核心回滚：
+
+```sh
+/etc/ruijie/rollback.sh
 ```
 
-然后按手动安装方式下载对应文件。
+面板回滚：
 
-## 路径选择
-
-| 路径 | 优先级 | 说明 |
-|------|--------|------|
-| `/overlay/usr/www/ruijie-web/` | 高 | 持久化、重启不丢 |
-| `/mnt/sda1/ruijie-web/` | 中 | USB 存储 |
-| `/www/ruijie-web/` | 低 | 临时目录，重启清空 |
-
-## 服务注册
-
-安装完成后会注册：
-
-- 服务名：`ruijie-panel`
-- 监听端口：`8080`
-- LuCI 入口：`服务 -> 锐捷 Web 管理面板`
-
-## 卸载
-
-```bash
-sh /overlay/usr/www/ruijie-web/uninstall.sh
+```sh
+/overlay/usr/www/ruijie-web/rollback.sh
 ```
 
-如果是 USB 安装，就执行对应 USB 路径下的 `uninstall.sh`。
+少数没有 overlay 的固件使用：
+
+```sh
+/www/ruijie-web/rollback.sh
+```
+
+回滚会恢复上一版代码以及当时的启用、运行状态。被替换的文件会保留为带时间戳的 `failed` 目录，方便进一步排查。
+
+## 验证
+
+```sh
+/etc/ruijie/ruijiectl runtime
+uci get network.lan.ipaddr
+curl --noproxy '*' -s "http://$(uci get network.lan.ipaddr):8080/ruijie-cgi/auth"
+```
+
+最后一条应返回合法 JSON。验证只读取运行环境和面板登录状态，不会触发校园网重新认证或下线。
+
+## 卸载面板
+
+```sh
+/overlay/usr/www/ruijie-web/uninstall.sh
+```
+
+卸载会删除面板、面板密码和会话，不会删除认证核心及校园网账号配置。

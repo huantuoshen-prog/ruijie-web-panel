@@ -22,7 +22,11 @@ export function accountTypeLabel(accountType: string): string {
   return accountType || "未知类型";
 }
 
-export function networkTone(online: boolean): "positive" | "warning" {
+export function networkTone(online: boolean | null): "positive" | "warning" | "neutral" {
+  if (online === null) {
+    return "neutral";
+  }
+
   return online ? "positive" : "warning";
 }
 

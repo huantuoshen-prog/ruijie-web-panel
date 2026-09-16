@@ -102,7 +102,7 @@ describe("App health monitor surfaces", () => {
           shell: "sh",
           busybox_present: true,
           curl_present: true,
-          nohup_backend: "nohup",
+          procd_present: true,
           script_dir: "/etc/ruijie",
           config_file: "/root/.config/ruijie/ruijie.conf",
           daemon_pidfile: "/var/run/ruijie-daemon.pid",
