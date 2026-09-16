@@ -80,7 +80,17 @@ fi || {
     }
     fail 'panel service did not start; previous panel restored'
 }
-curl --noproxy '*' -fsS --max-time 5 "http://${LAN_IP}:8080/ruijie-cgi/auth" >/dev/null || {
+health_ok=false
+health_attempt=0
+while [ "$health_attempt" -lt 10 ]; do
+    if curl --noproxy '*' -fsS --max-time 2 "http://${LAN_IP}:8080/ruijie-cgi/auth" >/dev/null 2>&1; then
+        health_ok=true
+        break
+    fi
+    health_attempt=$((health_attempt + 1))
+    sleep 1
+done
+[ "$health_ok" = true ] || {
     /etc/init.d/ruijie-panel stop || true
     [ -d "$BACKUP" ] && {
         rm -rf "$TARGET"

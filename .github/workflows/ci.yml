@@ -70,7 +70,7 @@ jobs:
             [ -n "$cookie" ]
             printf "%s" "$response" | grep -q "\"success\":true"
             curl --noproxy "*" -fsS -H "Cookie: $cookie" http://127.0.0.1:8080/ruijie-cgi/account | jq -e ".success and .schema_version == 2" >/dev/null
-            test "$(stat -c %a /etc/ruijie-panel/auth.conf)" = 600
+            ls -l /etc/ruijie-panel/auth.conf | grep -q "^-rw-------"
           '
       - name: Show OpenWrt logs on failure
         if: ${{ failure() }}
