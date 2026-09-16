@@ -7,6 +7,70 @@ on:
     branches: [main]
 
 jobs:
+  openwrt-panel:
+    name: OpenWrt ${{ matrix.release }} panel install
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release: 19.07.10
+            rootfs_url: https://downloads.openwrt.org/releases/19.07.10/targets/x86/64/openwrt-19.07.10-x86-64-generic-rootfs.tar.gz
+            rootfs_sha256: 12e7747f48d607eb782240c5c8c5fff6409d19f8fa853786e9642c86adb26287
+          - release: 24.10.8
+            rootfs_url: https://downloads.openwrt.org/releases/24.10.8/targets/x86/64/openwrt-24.10.8-x86-64-rootfs.tar.gz
+            rootfs_sha256: 6c94190246a54088e3984fc0c4cbbb518972abb2b10a28e30a0c41554eea8b9d
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: huantuoshen-prog/ruijie-gdstvc-autologin
+          ref: 11528d328f122346456d1a8aae06ea232f0f2138
+          path: .test-core
+      - name: Build pinned packages
+        run: |
+          BUILD_TIME=2026-09-16T13:00:00Z sh .test-core/release.sh
+          CORE_COMMIT=11528d328f122346456d1a8aae06ea232f0f2138 BUILD_TIME=2026-09-16T13:00:00Z sh release.sh
+      - name: Import verified official OpenWrt rootfs
+        env:
+          ROOTFS_URL: ${{ matrix.rootfs_url }}
+          ROOTFS_SHA256: ${{ matrix.rootfs_sha256 }}
+        run: |
+          curl -fsSL "$ROOTFS_URL" -o "$RUNNER_TEMP/openwrt-rootfs.tar.gz"
+          printf '%s  %s\n' "$ROOTFS_SHA256" "$RUNNER_TEMP/openwrt-rootfs.tar.gz" | sha256sum -c -
+          docker import "$RUNNER_TEMP/openwrt-rootfs.tar.gz" "ruijie-panel-openwrt:${{ matrix.release }}"
+      - name: Boot OpenWrt and install the complete panel stack
+        run: |
+          name="ruijie-panel-${{ matrix.release }}"
+          docker run -d --privileged --name "$name" -v "$PWD:/workspace:ro" "ruijie-panel-openwrt:${{ matrix.release }}" /sbin/init
+          for attempt in $(seq 1 20); do docker exec "$name" ubus call system board >/dev/null 2>&1 && break; sleep 1; done
+          docker exec "$name" ubus call system board >/dev/null
+          docker exec "$name" /bin/ash -ec '
+            opkg update
+            opkg install bash curl jq flock uhttpd
+            uci -q delete network.lan || true
+            uci set network.lan=interface
+            uci set network.lan.ipaddr=127.0.0.1
+            uci commit network
+            mkdir -p /tmp/core /tmp/panel
+            tar -xzf /workspace/.test-core/dist/ruijie-core-4.0.0.tar.gz -C /tmp/core
+            /tmp/core/ruijie-core/install.sh
+            tar -xzf /workspace/releases/ruijie-panel-1.0.0.tar.gz -C /tmp/panel
+            PANEL_PASSWORD=panel-test /tmp/panel/ruijie-panel/install.sh
+            response="$(curl --noproxy "*" -si --data password=panel-test http://127.0.0.1:8080/ruijie-cgi/auth)"
+            cookie="$(printf "%s\n" "$response" | sed -n "s/^Set-Cookie: \([^;]*\).*/\1/p" | tr -d "\r")"
+            [ -n "$cookie" ]
+            printf "%s" "$response" | grep -q "\"success\":true"
+            curl --noproxy "*" -fsS -H "Cookie: $cookie" http://127.0.0.1:8080/ruijie-cgi/account | jq -e ".success and .schema_version == 2" >/dev/null
+            test "$(stat -c %a /etc/ruijie-panel/auth.conf)" = 600
+          '
+      - name: Show OpenWrt logs on failure
+        if: ${{ failure() }}
+        run: docker logs "ruijie-panel-${{ matrix.release }}" || true
+      - name: Remove OpenWrt container
+        if: ${{ always() }}
+        run: docker rm -f "ruijie-panel-${{ matrix.release }}" >/dev/null 2>&1 || true
+
   real-core-config:
     name: Real core CGI configuration
     runs-on: ubuntu-latest
