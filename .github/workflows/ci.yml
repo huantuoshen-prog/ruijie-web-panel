@@ -42,16 +42,21 @@ jobs:
       - name: Boot OpenWrt and install the complete panel stack
         run: |
           name="ruijie-panel-${{ matrix.release }}"
-          docker run -d --privileged --name "$name" -v "$PWD:/workspace:ro" "ruijie-panel-openwrt:${{ matrix.release }}" /sbin/init
-          for attempt in $(seq 1 20); do docker exec "$name" ubus call system board >/dev/null 2>&1 && break; sleep 1; done
-          docker exec "$name" ubus call system board >/dev/null
-          docker exec "$name" /bin/ash -ec '
+          prep="${name}-prep"
+          docker run --name "$prep" "ruijie-panel-openwrt:${{ matrix.release }}" /bin/ash -ec '
             opkg update
             opkg install bash curl jq flock uhttpd
             uci -q delete network.lan || true
             uci set network.lan=interface
             uci set network.lan.ipaddr=127.0.0.1
             uci commit network
+          '
+          docker commit "$prep" "ruijie-panel-ready:${{ matrix.release }}" >/dev/null
+          docker rm "$prep" >/dev/null
+          docker run -d --privileged --name "$name" -v "$PWD:/workspace:ro" "ruijie-panel-ready:${{ matrix.release }}" /sbin/init
+          for attempt in $(seq 1 20); do docker exec "$name" ubus call system board >/dev/null 2>&1 && break; sleep 1; done
+          docker exec "$name" ubus call system board >/dev/null
+          docker exec "$name" /bin/ash -ec '
             mkdir -p /tmp/core /tmp/panel
             tar -xzf /workspace/.test-core/dist/ruijie-core-4.0.0.tar.gz -C /tmp/core
             /tmp/core/ruijie-core/install.sh
@@ -69,7 +74,9 @@ jobs:
         run: docker logs "ruijie-panel-${{ matrix.release }}" || true
       - name: Remove OpenWrt container
         if: ${{ always() }}
-        run: docker rm -f "ruijie-panel-${{ matrix.release }}" >/dev/null 2>&1 || true
+        run: |
+          docker rm -f "ruijie-panel-${{ matrix.release }}" >/dev/null 2>&1 || true
+          docker rm -f "ruijie-panel-${{ matrix.release }}-prep" >/dev/null 2>&1 || true
 
   real-core-config:
     name: Real core CGI configuration
