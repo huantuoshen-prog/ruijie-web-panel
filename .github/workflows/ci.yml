@@ -44,6 +44,7 @@ jobs:
           name="ruijie-panel-${{ matrix.release }}"
           prep="${name}-prep"
           docker run --name "$prep" "ruijie-panel-openwrt:${{ matrix.release }}" /bin/ash -ec '
+            mkdir -p /var/lock
             opkg update
             opkg install bash curl jq flock uhttpd
             uci -q delete network.lan || true
