@@ -47,6 +47,8 @@ jobs:
             mkdir -p /var/lock
             opkg update
             opkg install bash curl jq flock uhttpd
+            mkdir -p /etc/config
+            touch /etc/config/network
             uci -q delete network.lan || true
             uci set network.lan=interface
             uci set network.lan.ipaddr=127.0.0.1
