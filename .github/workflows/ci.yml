@@ -7,6 +7,120 @@ on:
     branches: [main]
 
 jobs:
+  openwrt-panel:
+    name: OpenWrt ${{ matrix.release }} panel install
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release: 19.07.10
+            rootfs_url: https://downloads.openwrt.org/releases/19.07.10/targets/x86/64/openwrt-19.07.10-x86-64-generic-rootfs.tar.gz
+            rootfs_sha256: 12e7747f48d607eb782240c5c8c5fff6409d19f8fa853786e9642c86adb26287
+          - release: 24.10.8
+            rootfs_url: https://downloads.openwrt.org/releases/24.10.8/targets/x86/64/openwrt-24.10.8-x86-64-rootfs.tar.gz
+            rootfs_sha256: 6c94190246a54088e3984fc0c4cbbb518972abb2b10a28e30a0c41554eea8b9d
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: huantuoshen-prog/ruijie-gdstvc-autologin
+          ref: 986c72d3bbec9c852d4b3a1e082ee24862bde555
+          path: .test-core
+      - name: Build pinned packages
+        run: |
+          BUILD_TIME=2026-09-16T13:00:00Z sh .test-core/release.sh
+          CORE_COMMIT=986c72d3bbec9c852d4b3a1e082ee24862bde555 BUILD_TIME=2026-09-16T13:00:00Z sh release.sh
+      - name: Import verified official OpenWrt rootfs
+        env:
+          ROOTFS_URL: ${{ matrix.rootfs_url }}
+          ROOTFS_SHA256: ${{ matrix.rootfs_sha256 }}
+        run: |
+          curl -fsSL "$ROOTFS_URL" -o "$RUNNER_TEMP/openwrt-rootfs.tar.gz"
+          printf '%s  %s\n' "$ROOTFS_SHA256" "$RUNNER_TEMP/openwrt-rootfs.tar.gz" | sha256sum -c -
+          docker import "$RUNNER_TEMP/openwrt-rootfs.tar.gz" "ruijie-panel-openwrt:${{ matrix.release }}"
+      - name: Boot OpenWrt and install the complete panel stack
+        run: |
+          name="ruijie-panel-${{ matrix.release }}"
+          prep="${name}-prep"
+          docker run --name "$prep" "ruijie-panel-openwrt:${{ matrix.release }}" /bin/ash -ec '
+            mkdir -p /var/lock
+            opkg update
+            opkg install bash curl jq flock uhttpd
+            mkdir -p /etc/config
+            touch /etc/config/network
+            uci -q delete network.lan || true
+            uci set network.lan=interface
+            uci set network.lan.ipaddr=127.0.0.1
+            uci commit network
+          '
+          docker commit "$prep" "ruijie-panel-ready:${{ matrix.release }}" >/dev/null
+          docker rm "$prep" >/dev/null
+          docker run -d --privileged --name "$name" -v "$PWD:/workspace:ro" "ruijie-panel-ready:${{ matrix.release }}" /sbin/init
+          for attempt in $(seq 1 20); do docker exec "$name" ubus call system board >/dev/null 2>&1 && break; sleep 1; done
+          docker exec "$name" ubus call system board >/dev/null
+          docker exec "$name" /bin/ash -ec '
+            mkdir -p /tmp/core /tmp/panel
+            tar -xzf /workspace/.test-core/dist/ruijie-core-4.0.0.tar.gz -C /tmp/core
+            /tmp/core/ruijie-core/install.sh
+            tar -xzf /workspace/releases/ruijie-panel-4.0.0.tar.gz -C /tmp/panel
+            PANEL_PASSWORD=panel-test /tmp/panel/ruijie-panel/install.sh
+            response="$(curl --noproxy "*" -si --data password=panel-test http://127.0.0.1:8080/ruijie-cgi/auth)"
+            cookie="$(printf "%s\n" "$response" | sed -n "s/^Set-Cookie: \([^;]*\).*/\1/p" | tr -d "\r")"
+            [ -n "$cookie" ]
+            printf "%s" "$response" | grep -q "\"success\":true"
+            curl --noproxy "*" -fsS -H "Cookie: $cookie" http://127.0.0.1:8080/ruijie-cgi/account | jq -e ".success and .schema_version == 2" >/dev/null
+            ls -l /etc/ruijie-panel/auth.conf | grep -q "^-rw-------"
+
+            target=/overlay/usr/www/ruijie-web
+            [ -d /overlay ] || target=/www/ruijie-web
+            printf old-release > "$target/release-marker"
+            /etc/init.d/ruijie-panel stop
+            /etc/init.d/ruijie-panel disable
+            /tmp/panel/ruijie-panel/install.sh
+            ! /etc/init.d/ruijie-panel enabled
+            ! uci -q get uhttpd.ruijie >/dev/null
+            [ -d "${target}.rollback" ]
+            "$target/rollback.sh"
+            grep -q old-release "$target/release-marker"
+            ! /etc/init.d/ruijie-panel enabled
+            ! uci -q get uhttpd.ruijie >/dev/null
+
+            mkdir -p /tmp/failbin
+            printf "#!/bin/sh\nexit 1\n" > /tmp/failbin/curl
+            chmod 755 /tmp/failbin/curl
+            if PATH="/tmp/failbin:$PATH" /tmp/panel/ruijie-panel/install.sh; then
+              echo "install unexpectedly passed a failed health check" >&2
+              exit 1
+            fi
+            grep -q old-release "$target/release-marker"
+            ! /etc/init.d/ruijie-panel enabled
+            ! uci -q get uhttpd.ruijie >/dev/null
+          '
+      - name: Show OpenWrt logs on failure
+        if: ${{ failure() }}
+        run: docker logs "ruijie-panel-${{ matrix.release }}" || true
+      - name: Remove OpenWrt container
+        if: ${{ always() }}
+        run: |
+          docker rm -f "ruijie-panel-${{ matrix.release }}" >/dev/null 2>&1 || true
+          docker rm -f "ruijie-panel-${{ matrix.release }}-prep" >/dev/null 2>&1 || true
+
+  real-core-config:
+    name: Real core CGI configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: huantuoshen-prog/ruijie-gdstvc-autologin
+          ref: 986c72d3bbec9c852d4b3a1e082ee24862bde555
+          path: .test-core
+      - name: Test account operations against the pinned real core
+        run: |
+          chmod +x .test-core/ruijiectl
+          RUIJIECTL="$PWD/.test-core/ruijiectl" bash tests/integration/real_core_config.sh
+
   shellcheck:
     name: ShellCheck Lint
     runs-on: ubuntu-latest
@@ -27,8 +141,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: huantuoshen-prog/ruijie-gdstvc-autologin
+          ref: 986c72d3bbec9c852d4b3a1e082ee24862bde555
+          path: .test-core
+
       - name: Run web panel tests
-        run: bash tests/run_tests.sh
+        run: |
+          chmod +x .test-core/ruijiectl
+          RUIJIECTL="$PWD/.test-core/ruijiectl" bash tests/run_tests.sh
+
+      - name: Session entropy regressions
+        if: ${{ !cancelled() }}
+        run: sh tests/test_session_entropy.sh
 
   frontend:
     name: Frontend Build
@@ -49,6 +175,9 @@ jobs:
 
       - name: Run frontend tests
         run: npm run test
+
+      - name: Type check frontend
+        run: npx tsc --noEmit
 
       - name: Build frontend
         run: npm run build

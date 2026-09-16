@@ -1,11 +1,17 @@
-# 锐捷认证 Web 管理面板
+# 锐捷认证 Web 管理面板：OpenWrt 校园网路由器管理界面
 
-> 锐捷认证脚本的可选图形界面，在浏览器里管理账号、守护进程、日志和健康监听。
+> 面向广东科学技术职业学院（广科院、GDSTVC）校园网用户的 OpenWrt 锐捷认证管理面板。在浏览器里查看网络状态、管理自动重连、账号配置与日志。
 
 [![CI](https://github.com/huantuoshen-prog/ruijie-web-panel/actions/workflows/ci.yml/badge.svg)](https://github.com/huantuoshen-prog/ruijie-web-panel/actions)
-[![版本](https://img.shields.io/badge/version-v3.1-blue)](https://github.com/huantuoshen-prog/ruijie-web-panel)
+[![版本](https://img.shields.io/badge/version-v4.0.0-blue)](https://github.com/huantuoshen-prog/ruijie-web-panel/releases)
 
 **本仓库依赖主仓库 [ruijie-gdstvc-autologin](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin)。请先安装并配置主脚本，再安装这个面板。**
+
+## 这是做什么的？
+
+这是运行在 OpenWrt、iStoreOS 或 ImmortalWrt 路由器上的本地网页面板。它服务于锐捷 Web 认证、校园网自动登录和宿舍路由器管理；手机或电脑浏览器访问路由器地址即可使用。
+
+关键词：OpenWrt 锐捷认证、校园网自动登录、广东科学技术职业学院、广科院、GDSTVC、iStoreOS、ImmortalWrt、路由器 Web 面板。
 
 ## 快速入口
 
@@ -44,17 +50,20 @@
 
 ## 快速开始
 
-### 3 步安装
+### 使用完整发布包
 
 ```bash
-wget -O /tmp/install.sh \
-  https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/install.sh
-chmod +x /tmp/install.sh && sh /tmp/install.sh
+cd /tmp
+curl -fLO https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/v4.0.0/ruijie-openwrt-bundle.tar.gz
+curl -fLO https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/v4.0.0/SHA256SUMS
+grep ' ruijie-openwrt-bundle.tar.gz$' SHA256SUMS | sha256sum -c -
 ```
+
+解压、安装核心和面板的完整命令见 [安装文档](./docs/install.md)。请勿逐个下载 `main` 分支文件。
 
 安装完成后：
 
-1. 记住安装脚本初始化的面板密码
+1. 记住首次安装时设置的独立面板密码
 2. 浏览器访问 `http://路由器IP:8080/`
 3. 登录后进入总览页面
 
@@ -65,7 +74,7 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 - `http://192.168.5.1:8080/`
 - `http://192.168.1.1:8080/`
 
-如果你想看手动安装、路径说明、服务注册和卸载：
+如果你想看完整安装、升级、回滚和卸载步骤：
 [docs/install.md](./docs/install.md)
 
 ## 功能概览
@@ -89,7 +98,7 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 
 | 文档 | 说明 |
 |------|------|
-| [docs/install.md](./docs/install.md) | 系统要求、自动 / 手动 / USB 安装、服务注册、卸载 |
+| [docs/install.md](./docs/install.md) | 系统要求、固定发布包、升级、回滚与卸载 |
 | [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md) | 给通用 Agent 的现成安装 Prompt |
 | [docs/usage.md](./docs/usage.md) | 页面功能、健康监听控制、日志、主题与背景 |
 | [docs/api.md](./docs/api.md) | `/ruijie-cgi/*` 路由、鉴权与请求/响应示例 |
@@ -103,6 +112,10 @@ chmod +x /tmp/install.sh && sh /tmp/install.sh
 |------|--------|------|
 | **ruijie-gdstvc-autologin** | [链接](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin) | 主仓库，核心认证脚本 |
 | Qclaw | [链接](https://github.com/qiuzhi2046/Qclaw) | OpenClaw 桌面管家（非本项目） |
+
+## 反馈与贡献
+
+欢迎新生和路由器爱好者反馈安装体验、固件兼容性和文档问题。提交 issue 时请删除账号、密码、MAC 地址、内网 IP、会话令牌和完整认证链接。
 
 ## 许可证
 

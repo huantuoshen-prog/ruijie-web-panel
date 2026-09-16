@@ -20,6 +20,7 @@ describe("presenters", () => {
 
   it("returns stable tones for status indicators", () => {
     expect(networkTone(true)).toBe("positive");
+    expect(networkTone(null)).toBe("neutral");
     expect(daemonTone("ONLINE", true)).toBe("positive");
     expect(daemonTone("STOPPED", false)).toBe("neutral");
     expect(logTone("ERROR")).toBe("error");

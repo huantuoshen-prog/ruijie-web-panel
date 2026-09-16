@@ -48,8 +48,8 @@ https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT
 - 不要用本地电脑上的 `/etc/ruijie`、`/etc/ruijie-panel`、`/overlay/usr/www` 来推断路由器状态
 - 如果你当前不是路由器终端，也没有远程执行能力，就先让我进入路由器 SSH / TTYD 终端，再继续
 - 如果主仓库没装好，停止面板安装，并明确提示我先走主仓库安装 Prompt
-- 如果主仓库已具备条件，优先使用自动安装脚本
-- 只有自动安装不可用时，才切换到手动安装或 USB 安装
+- 如果主仓库已具备条件，只使用 GitHub Release 中带校验值的完整组合包
+- 不要逐个下载 `main` 分支文件，也不要单独下载 `install.sh`
 - 安装完成后必须验证访问地址、服务状态和面板密码初始化结果
 
 请按下面格式告诉我：
@@ -76,26 +76,25 @@ https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT
 工作要求：
 
 1. 先确认当前会话是不是路由器终端，而不是普通电脑终端。
-   - 如果当前会话不是路由器终端，不要直接运行本地 `/etc/ruijie/ruijie.sh`、`test -f /etc/ruijie/ruijie.sh` 之类的命令
+   - 如果当前会话不是路由器终端，不要直接运行本地 `/etc/ruijie/ruijiectl`、`test -x /etc/ruijie/ruijiectl` 之类的命令
    - 先让我切到路由器 SSH / TTYD 终端，或要求我提供一个可用 SSH 目标
    - 如果你具备远程执行能力，再通过 SSH 在路由器上执行后续命令
 
 2. 前置检查必须在路由器上执行：
-   - `test -f /etc/ruijie/ruijie.sh`
-   - `/etc/ruijie/ruijie.sh --status`
+   - `test -x /etc/ruijie/ruijiectl`
+   - `/etc/ruijie/ruijiectl runtime`
    - 如果主脚本不存在或未完成基本配置，停止继续安装，并明确要求我先完成主仓库安装
 
-3. 如果前置条件满足，优先使用自动安装脚本：
-   - `wget -O /tmp/install.sh https://raw.githubusercontent.com/huantuoshen-prog/ruijie-web-panel/main/install.sh`
-   - `chmod +x /tmp/install.sh && sh /tmp/install.sh`
-   - 如果当前环境没有 `wget`，再改用 `curl`
+3. 如果前置条件满足，按安装文档下载 `v4.0.0` 的 `ruijie-openwrt-bundle.tar.gz` 与 `SHA256SUMS`：
+   - 必须先校验外层包，再校验组合包和两个内层包的 `manifest.sha256`
+   - 先运行核心包的 `install.sh`，再运行面板包的 `install.sh`
+   - 不允许从 `main` 分支逐个下载文件
 
-4. 只有自动安装失败或当前路径不适合时，才切换到手动安装或 USB 安装路径；不要一开始就走长路径。
+4. 依赖缺失或旧服务迁移保护阻止安装时，说明具体诊断并停止；不要绕过校验或强杀未知进程。
 
 5. 安装完成后必须做验证：
-   - 检查 `/etc/ruijie-panel/auth.conf` 是否存在
+   - 检查 `/etc/ruijie-panel/auth.conf` 是否存在且权限为 `600`
    - 检查面板文件目录是否存在：`/overlay/usr/www/ruijie-web`、`/mnt/sda1/ruijie-web` 或 `/www/ruijie-web`
-   - 启动或重载面板服务：`/etc/init.d/ruijie-panel start`
    - 读取路由器 LAN IP：`uci get network.lan.ipaddr`
    - 优先使用 `curl -s http://127.0.0.1:8080/ruijie-cgi/auth` 检查接口是否可访问；如果没有 `curl`，再改用 `wget -qO-`
 
@@ -125,12 +124,11 @@ https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT
 - 先让我切到路由器 SSH / TTYD 终端，或要求我提供可用 SSH 目标
 
 请执行并检查：
-1. `test -f /etc/ruijie/ruijie.sh`
+1. `test -x /etc/ruijie/ruijiectl` 并运行 `/etc/ruijie/ruijiectl runtime`
 2. `test -f /etc/ruijie-panel/auth.conf`
 3. 检查 Web 根目录是否存在：`/overlay/usr/www/ruijie-web`、`/mnt/sda1/ruijie-web` 或 `/www/ruijie-web`
-4. `/etc/init.d/ruijie-panel start`
-5. `uci get network.lan.ipaddr`
-6. 优先运行 `curl -s http://127.0.0.1:8080/ruijie-cgi/auth`；如果没有 curl，就改用 `wget -qO-`
+4. `uci get network.lan.ipaddr`
+5. 运行 `curl --noproxy '*' -s "http://$(uci get network.lan.ipaddr):8080/ruijie-cgi/auth"`
 
 请只输出：
 1. 主脚本前置条件是否满足

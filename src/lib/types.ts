@@ -10,6 +10,7 @@ export type HealthLogType =
   | "auth_success"
   | "auth_failed"
   | "network_error"
+  | "network_unknown"
   | "daemon"
   | "monitor";
 
@@ -21,7 +22,8 @@ export interface AuthState {
 
 export interface StatusResponse {
   installed: boolean;
-  online: boolean;
+  online: boolean | null;
+  connectivity?: "online" | "offline" | "unknown";
   username: string;
   operator: string;
   account_type: string;
@@ -32,6 +34,12 @@ export interface StatusResponse {
   last_auth: string;
   version: string;
   message: string;
+  revision?: string;
+  desired_running?: boolean;
+  process_running?: boolean;
+  observed_at?: string | number;
+  state_age_seconds?: number;
+  stale?: boolean;
 }
 
 export interface AccountResponse {
@@ -39,11 +47,13 @@ export interface AccountResponse {
   operator: string;
   account_type: string;
   proxy_url?: string;
+  revision?: string;
 }
 
 export interface SettingsResponse {
   proxy_url: string;
   proxy_url_https: string;
+  revision?: string;
 }
 
 export interface LogLine {
@@ -64,10 +74,12 @@ export interface ActionResponse {
   message: string;
   operator?: string;
   pid?: string;
+  code?: string;
 }
 
 export interface HealthSnapshot {
-  online: boolean;
+  online: boolean | null;
+  connectivity?: "online" | "offline" | "unknown";
   daemon_running: boolean;
   daemon_state: string;
   daemon_pid: string;
@@ -115,7 +127,7 @@ export interface RuntimeStatusResponse {
   shell?: string;
   busybox_present?: boolean;
   curl_present?: boolean;
-  nohup_backend?: string;
+  procd_present?: boolean;
   script_dir?: string;
   config_file?: string;
   daemon_pidfile?: string;

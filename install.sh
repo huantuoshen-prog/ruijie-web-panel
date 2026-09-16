@@ -1,284 +1,150 @@
 #!/bin/sh
-# ========================================
-# Ruijie Web 管理面板 安装脚本
-# 自动部署到 OpenWrt / iStoreOS 路由器
-# 支持一键安装：仅需一条 wget/curl 命令
-# ========================================
+# Install only from an extracted, checksummed panel release bundle.
+set -eu
+SOURCE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+MANIFEST="$SOURCE_DIR/manifest.sha256"
+TARGET=/overlay/usr/www/ruijie-web
+[ -d /overlay ] || TARGET=/www/ruijie-web
+STAGE="${TARGET}.next.$$"
+BACKUP="${TARGET}.rollback"
+PREVIOUS_INIT="${BACKUP}.init"
+ROLLBACK_META="${BACKUP}.state"
+AUTH_FILE=/etc/ruijie-panel/auth.conf
 
-set -e
+fail() { printf '%s\n' "panel install failed: $*" >&2; exit 1; }
+[ -f /etc/config/uhttpd ] || fail 'uhttpd is required'
+[ -x /etc/ruijie/ruijiectl ] || fail 'core 4.x must be installed before the panel'
+for command in jq sha256sum curl uci; do command -v "$command" >/dev/null 2>&1 || fail "missing dependency: $command"; done
+LAN_IP="$(uci get network.lan.ipaddr 2>/dev/null)" || fail 'LAN address is unavailable'
+[ -n "$LAN_IP" ] && [ "$LAN_IP" != '0.0.0.0' ] || fail 'a specific LAN address is required'
+[ -f "$MANIFEST" ] || fail 'manifest.sha256 is missing; use a fixed release bundle'
+(cd "$SOURCE_DIR" && sha256sum -c manifest.sha256) || fail 'bundle checksum verification failed'
 
-# ----------------------------------------
-# 颜色
-# ----------------------------------------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-echo_info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
-echo_ok()    { echo -e "${GREEN}[OK]${NC}   $1"; }
-echo_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
-echo_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-# ----------------------------------------
-# 配置
-# ----------------------------------------
-GITHUB_REPO="huantuoshen-prog/ruijie-web-panel"
-GITHUB_BRANCH="main"
-RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}"
-API_BASE="https://api.github.com/repos/${GITHUB_REPO}/contents"
-INSTALL_TEMP="/tmp/ruijie-panel-install"
-INSTALL_MARKER="${INSTALL_TEMP}/.installed"
-
-# 需要下载的文件列表（路径相对于仓库根）
-DOWNLOAD_FILES="
-dist/index.html
-dist/app.js
-dist/app.css
-dist/favicon.ico
-uninstall.sh
-api/auth.sh
-api/account.sh
-api/common.sh
-api/daemon.sh
-api/health-log.sh
-api/health.sh
-api/log.sh
-api/mode.sh
-api/runtime.sh
-api/settings.sh
-api/status.sh
-init.d/ruijie-panel
-"
-
-PANEL_AUTH_DIR="/etc/ruijie-panel"
-PANEL_AUTH_FILE="${PANEL_AUTH_DIR}/auth.conf"
-
-hash_password() {
-    if command -v sha256sum >/dev/null 2>&1; then
-        printf '%s' "$1" | sha256sum | awk '{print $1}'
-    elif command -v openssl >/dev/null 2>&1; then
-        printf '%s' "$1" | openssl dgst -sha256 | awk '{print $NF}'
+# An upgrade retains the existing password. A first install must create one
+# before exposing the management endpoint. Tests and unattended installs may
+# supply PANEL_PASSWORD; normal use reads it without echoing it.
+new_password=''
+if [ ! -f "$AUTH_FILE" ]; then
+    if [ -n "${PANEL_PASSWORD:-}" ]; then
+        new_password="$PANEL_PASSWORD"
+    elif [ -t 0 ]; then
+        printf '%s' 'Create the Web panel password: ' >&2
+        stty -echo
+        IFS= read -r new_password
+        stty echo
+        printf '\n' >&2
+        printf '%s' 'Confirm the Web panel password: ' >&2
+        stty -echo
+        IFS= read -r confirmation
+        stty echo
+        printf '\n' >&2
+        [ "$new_password" = "$confirmation" ] || fail 'password confirmation did not match'
     else
-        return 1
+        fail 'first install needs a panel password; run interactively or set PANEL_PASSWORD in the install environment'
     fi
-}
-
-generate_panel_password() {
-    if command -v od >/dev/null 2>&1; then
-        dd if=/dev/urandom bs=16 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
-    else
-        date '+%s%N'
+    [ -n "$new_password" ] || fail 'panel password cannot be empty'
+    if printf '%s' "$new_password" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+        fail 'panel password cannot contain control characters'
     fi
-}
-
-read_secret() {
-    _prompt="$1"
-    printf '%s' "$_prompt"
-    stty -echo 2>/dev/null
-    read _secret
-    stty echo 2>/dev/null
-    printf '\n'
-    printf '%s' "$_secret"
-}
-
-ensure_panel_auth() {
-    mkdir -p "$PANEL_AUTH_DIR"
-
-    if [ -f "$PANEL_AUTH_FILE" ]; then
-        echo_ok "检测到已存在的面板密码配置，保留原配置"
-        return 0
-    fi
-
-    if [ -t 0 ]; then
-        while true; do
-            _password="$(read_secret '请设置 Web 面板密码: ')"
-            _confirm="$(read_secret '请再次输入 Web 面板密码: ')"
-
-            if [ -z "$_password" ]; then
-                echo_warn "面板密码不能为空"
-            elif [ "$_password" != "$_confirm" ]; then
-                echo_warn "两次输入的密码不一致，请重试"
-            else
-                break
-            fi
-        done
-    else
-        _password="$(generate_panel_password)"
-        echo_warn "未检测到交互终端，已自动生成 Web 面板密码"
-    fi
-
-    _password_hash="$(hash_password "$_password")"
-    if [ -z "$_password_hash" ]; then
-        echo_error "无法生成面板密码摘要，请确认系统提供 sha256sum 或 openssl"
-        exit 1
-    fi
-
-    cat > "$PANEL_AUTH_FILE" <<EOF
-PASSWORD_SHA256=${_password_hash}
-EOF
-    chmod 600 "$PANEL_AUTH_FILE" 2>/dev/null || true
-
-    echo_ok "Web 面板密码已初始化"
-    echo "  面板密码：$_password"
-    echo "  如需修改，请删除 $PANEL_AUTH_FILE 后重新运行安装脚本"
-}
-
-# ----------------------------------------
-# 1. 检测运行环境
-# ----------------------------------------
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  锐捷认证 Web 管理面板 安装程序"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-echo_info "检测路由器环境..."
-
-if [ ! -f /etc/config/uhttpd ]; then
-    echo_error "未检测到 uhttpd（Web 服务器），当前固件可能不支持"
-    echo ""
-    echo "  请确认你的路由器运行的是 OpenWrt、iStoreOS、ImmortalWrt 等衍生固件"
-    echo "  或者手动安装：opkg update && opkg install uhttpd"
-    exit 1
-fi
-echo_ok "uhttpd 已就绪"
-
-# 检测是否有 wget（优先）或 curl
-if command -v wget >/dev/null 2>&1; then
-    # wget 优先，避免默认的 HTML/CSS/JS 文件名转换
-    DOWNLOADER="wget -q --no-config -O"
-elif command -v curl >/dev/null 2>&1; then
-    DOWNLOADER="curl -s -o"
-else
-    echo_error "未找到 wget 或 curl，无法下载文件"
-    exit 1
-fi
-echo_ok "下载工具: ${DOWNLOADER%% *}"
-
-# ----------------------------------------
-# 2. 确定安装目标路径
-# ----------------------------------------
-if [ -d /overlay ]; then
-    WEB_TARGET="/overlay/usr/www/ruijie-web"
-    INIT_TARGET="/overlay/etc/init.d/ruijie-panel"
-    echo_ok "检测到 overlay 持久化存储"
-elif [ -d /mnt/sda1 ]; then
-    WEB_TARGET="/mnt/sda1/ruijie-web"
-    INIT_TARGET="/etc/init.d/ruijie-panel"
-    echo_warn "未检测到 overlay，使用 USB 存储: $WEB_TARGET"
-else
-    WEB_TARGET="/www/ruijie-web"
-    INIT_TARGET="/etc/init.d/ruijie-panel"
-    echo_warn "未检测到 overlay 和 USB，使用临时路径（重启后需重新安装）"
 fi
 
-# ----------------------------------------
-# 3. 下载文件到临时目录
-# ----------------------------------------
-echo_info "正在下载安装文件（从 GitHub）..."
-
-rm -rf "$INSTALL_TEMP"
-mkdir -p "$INSTALL_TEMP"
-
-_fetch_ok=true
-for _file in $DOWNLOAD_FILES; do
-    _url="${RAW_BASE}/${_file}"
-    _dest="${INSTALL_TEMP}/${_file}"
-    _dir="$(dirname "$_dest")"
-    mkdir -p "$_dir"
-
-    if eval "$DOWNLOADER \"$_dest\" \"$_url\"" 2>/dev/null; then
-        echo "    $_file"
-    else
-        echo_error "下载失败: $_file"
-        _fetch_ok=false
-    fi
+mkdir -p "$STAGE/api" "$STAGE/init.d" "$STAGE/ruijie-cgi"
+cp "$SOURCE_DIR"/dist/* "$STAGE/"
+cp "$SOURCE_DIR"/api/*.sh "$STAGE/api/"
+cp "$SOURCE_DIR/init.d/ruijie-panel" "$STAGE/init.d/"
+cp "$SOURCE_DIR/uninstall.sh" "$SOURCE_DIR/rollback.sh" "$STAGE/"
+for name in auth auth-action account daemon health health-log log mode runtime settings status; do
+    ln -s "../api/${name}.sh" "$STAGE/ruijie-cgi/$name"
 done
+chmod 755 "$STAGE"/api/*.sh "$STAGE/init.d/ruijie-panel" "$STAGE/uninstall.sh" "$STAGE/rollback.sh"
 
-if [ "$_fetch_ok" != "true" ]; then
-    echo_error "部分文件下载失败，请检查网络连接"
-    exit 1
+existing_install=false
+service_enabled=true
+service_running=true
+init_present=false
+if [ -d "$TARGET" ] || [ -f /etc/init.d/ruijie-panel ]; then
+    existing_install=true
+    service_enabled=false
+    service_running=false
+    [ -f /etc/init.d/ruijie-panel ] && init_present=true
+    [ -x /etc/init.d/ruijie-panel ] && /etc/init.d/ruijie-panel enabled >/dev/null 2>&1 && service_enabled=true
+    uci -q get uhttpd.ruijie >/dev/null 2>&1 && service_running=true
 fi
-echo_ok "文件下载完成"
+[ -d "$TARGET" ] && {
+    rm -rf "$BACKUP" "$PREVIOUS_INIT" "$ROLLBACK_META"
+    mv "$TARGET" "$BACKUP"
+    [ -f /etc/init.d/ruijie-panel ] && cp -p /etc/init.d/ruijie-panel "$PREVIOUS_INIT" || true
+    printf 'enabled=%s\nrunning=%s\ninit_present=%s\n' \
+        "$service_enabled" "$service_running" "$init_present" > "$ROLLBACK_META"
+}
+mv "$STAGE" "$TARGET"
+cp "$SOURCE_DIR/init.d/ruijie-panel" /etc/init.d/ruijie-panel
+chmod 755 /etc/init.d/ruijie-panel
 
-# ----------------------------------------
-# 3.5 初始化面板密码
-# ----------------------------------------
-echo_info "初始化 Web 面板访问保护..."
-ensure_panel_auth
+auth_created=false
+restore_previous_release() {
+    /etc/init.d/ruijie-panel stop || true
+    /etc/init.d/ruijie-panel disable || true
+    rm -rf "$TARGET"
+    if [ -d "$BACKUP" ]; then
+        mv "$BACKUP" "$TARGET"
+        if [ "$init_present" = true ] && [ -f "$PREVIOUS_INIT" ]; then
+            cp "$PREVIOUS_INIT" /etc/init.d/ruijie-panel
+            chmod 755 /etc/init.d/ruijie-panel
+        else
+            rm -f /etc/init.d/ruijie-panel
+        fi
+        if [ -x /etc/init.d/ruijie-panel ]; then
+            [ "$service_enabled" = true ] && /etc/init.d/ruijie-panel enable || /etc/init.d/ruijie-panel disable || true
+            [ "$service_running" = true ] && /etc/init.d/ruijie-panel start || true
+        fi
+    else
+        rm -f /etc/init.d/ruijie-panel
+    fi
+    if [ "$auth_created" = true ]; then
+        rm -f "$AUTH_FILE"
+    fi
+}
 
-# ----------------------------------------
-# 4. 复制 Web 文件到目标目录
-# ----------------------------------------
-echo_info "安装 Web 文件到 $WEB_TARGET ..."
+if [ -n "$new_password" ]; then
+    mkdir -p /etc/ruijie-panel || { restore_previous_release; fail 'could not create panel authentication directory'; }
+    umask 077
+    auth_tmp="${AUTH_FILE}.tmp.$$"
+    if printf 'PASSWORD_SHA256=%s\n' "$(printf '%s' "$new_password" | sha256sum | awk '{print $1}')" > "$auth_tmp" \
+        && chmod 600 "$auth_tmp" && mv -f "$auth_tmp" "$AUTH_FILE"; then
+        auth_created=true
+    else
+        rm -f "$auth_tmp"
+        restore_previous_release
+        fail 'could not save panel password'
+    fi
+fi
 
-mkdir -p "$WEB_TARGET"
-mkdir -p "${WEB_TARGET}/api"
+[ "$service_enabled" = true ] && /etc/init.d/ruijie-panel enable || /etc/init.d/ruijie-panel disable
+if ! /etc/init.d/ruijie-panel start; then
+    restore_previous_release
+    fail 'panel service did not start; previous panel restored'
+fi
 
-cp "${INSTALL_TEMP}/dist/index.html" "${WEB_TARGET}/index.html"
-cp "${INSTALL_TEMP}/dist/app.js" "${WEB_TARGET}/app.js"
-cp "${INSTALL_TEMP}/dist/app.css" "${WEB_TARGET}/app.css"
-cp "${INSTALL_TEMP}/dist/favicon.ico" "${WEB_TARGET}/favicon.ico"
-cp "${INSTALL_TEMP}/uninstall.sh" "${WEB_TARGET}/"
-for _f in "${INSTALL_TEMP}/api/"*.sh; do
-    [ -f "$_f" ] && cp "$_f" "${WEB_TARGET}/api/"
+health_ok=false
+health_attempt=0
+while [ "$health_attempt" -lt 10 ]; do
+    if curl --noproxy '*' -fsS --max-time 2 "http://${LAN_IP}:8080/ruijie-cgi/auth" >/dev/null 2>&1; then
+        health_ok=true
+        break
+    fi
+    health_attempt=$((health_attempt + 1))
+    sleep 1
 done
+if [ "$health_ok" != true ]; then
+    restore_previous_release
+    fail 'health check failed; previous panel restored'
+fi
 
-# 标记已安装路径（供卸载脚本使用）
-echo "$WEB_TARGET" > "${WEB_TARGET}/.install_path"
-
-chmod +x "${WEB_TARGET}/api/"*.sh 2>/dev/null || true
-chmod +x "${WEB_TARGET}/uninstall.sh" 2>/dev/null || true
-
-# 创建 CGI 路由目录（前端调用 /ruijie-cgi/<name>）
-rm -rf "${WEB_TARGET}/ruijie-cgi"
-mkdir -p "${WEB_TARGET}/ruijie-cgi"
-for _name in auth account daemon health health-log log mode runtime settings status; do
-    ln -sf "../api/${_name}.sh" "${WEB_TARGET}/ruijie-cgi/${_name}"
-done
-echo_ok "Web 文件已复制"
-
-# ----------------------------------------
-# 5. 安装服务脚本
-# ----------------------------------------
-echo_info "注册系统服务..."
-
-mkdir -p "$(dirname "$INIT_TARGET")"
-cp "${INSTALL_TEMP}/init.d/ruijie-panel" "$INIT_TARGET"
-chmod +x "$INIT_TARGET"
-
-/etc/init.d/ruijie-panel enable 2>/dev/null
-echo_ok "服务已注册并启用"
-
-# ----------------------------------------
-# 6. 启动服务
-# ----------------------------------------
-echo_info "启动 Web 服务..."
-/etc/init.d/ruijie-panel start 2>&1
-
-# 清理临时目录
-rm -rf "$INSTALL_TEMP"
-
-# 获取路由器 LAN IP
-_ROUTER_IP=$(uci get network.lan.ipaddr 2>/dev/null || echo "192.168.5.1")
-
-echo ""
-echo_ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo_ok "  安装完成！"
-echo_ok "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  访问地址：http://${_ROUTER_IP}:8080/"
-echo ""
-echo "  LuCI 管理方法："
-echo "    路由器后台 → 服务 → 锐捷 Web 管理面板"
-echo ""
-echo "  命令行管理："
-echo "    /etc/init.d/ruijie-panel start   # 启动"
-echo "    /etc/init.d/ruijie-panel stop    # 停止"
-echo "    /etc/init.d/ruijie-panel restart # 重启"
-echo "    /etc/init.d/ruijie-panel enable  # 开机自启"
-echo ""
-echo "  卸载命令：sh $WEB_TARGET/uninstall.sh"
-echo ""
+if [ "$existing_install" = true ] && [ "$service_running" != true ]; then
+    if ! /etc/init.d/ruijie-panel stop; then
+        restore_previous_release
+        fail 'could not restore the previous stopped state'
+    fi
+fi
+printf '%s\n' "panel installed at $TARGET; previous release and service state kept at $BACKUP"
