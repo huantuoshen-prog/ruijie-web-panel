@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/assets/banner.svg" alt="RUIJIE 锐捷 Web 管理面板：浏览器 → 面板 → 认证核心" width="100%">
+  <img src="https://cdn.jsdelivr.net/gh/huantuoshen-prog/ruijie-web-panel@main/docs/assets/banner.svg" alt="RUIJIE 锐捷 Web 管理面板：浏览器 → 面板 → 认证核心" width="100%">
 </p>
 
 <p align="center">
