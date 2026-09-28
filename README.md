@@ -1,123 +1,109 @@
-# 锐捷认证 Web 管理面板：OpenWrt 校园网路由器管理界面
+<p align="center">
+  <img src="./docs/assets/banner.svg" alt="RUIJIE 锐捷 Web 管理面板：浏览器 → 面板 → 认证核心" width="100%">
+</p>
 
-> 面向广东科学技术职业学院（广科院、GDSTVC）校园网用户的 OpenWrt 锐捷认证管理面板。在浏览器里查看网络状态、管理自动重连、账号配置与日志。
+<p align="center">
+  <a href="https://github.com/huantuoshen-prog/ruijie-web-panel/actions"><img src="https://img.shields.io/github/actions/workflow/status/huantuoshen-prog/ruijie-web-panel/ci.yml?branch=main&style=flat-square&label=CI&labelColor=1b1a17&color=2b8a57" alt="CI"></a>
+  <a href="https://github.com/huantuoshen-prog/ruijie-web-panel/releases"><img src="https://img.shields.io/badge/version-4.0.0-e8590c?style=flat-square&labelColor=1b1a17" alt="版本 4.0.0"></a>
+  <img src="https://img.shields.io/badge/OpenWrt-19.07%20~%2024.10-7a7468?style=flat-square&labelColor=1b1a17" alt="OpenWrt 19.07 ~ 24.10">
+  <img src="https://img.shields.io/badge/license-MIT-7a7468?style=flat-square&labelColor=1b1a17" alt="MIT">
+</p>
 
-[![CI](https://github.com/huantuoshen-prog/ruijie-web-panel/actions/workflows/ci.yml/badge.svg)](https://github.com/huantuoshen-prog/ruijie-web-panel/actions)
-[![版本](https://img.shields.io/badge/version-v4.0.0-blue)](https://github.com/huantuoshen-prog/ruijie-web-panel/releases)
+<p align="center">
+  <b>01</b> <a href="#快速开始">快速开始</a> ·
+  <b>02</b> <a href="#界面">界面</a> ·
+  <b>03</b> <a href="#文档">文档</a> ·
+  <b>04</b> <a href="#相关项目">相关项目</a>
+</p>
 
-**本仓库依赖主仓库 [ruijie-gdstvc-autologin](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin)。请先安装并配置主脚本，再安装这个面板。**
+---
 
-## 这是做什么的？
+运行在 OpenWrt / iStoreOS / ImmortalWrt 路由器上的本地网页面板，面向广东科学技术职业学院（广科院、GDSTVC）校园网用户。手机或电脑打开路由器地址，就能看联网状态、改账号、控制守护进程、翻日志。
 
-这是运行在 OpenWrt、iStoreOS 或 ImmortalWrt 路由器上的本地网页面板。它服务于锐捷 Web 认证、校园网自动登录和宿舍路由器管理；手机或电脑浏览器访问路由器地址即可使用。
+> [!IMPORTANT]
+> 面板依赖认证核心 [ruijie-gdstvc-autologin](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin)。请先装好核心，或直接使用下面的组合包。
 
-关键词：OpenWrt 锐捷认证、校园网自动登录、广东科学技术职业学院、广科院、GDSTVC、iStoreOS、ImmortalWrt、路由器 Web 面板。
-
-## 快速入口
-
-- [3 步安装](#快速开始)
-- [功能概览](#功能概览)
-- [安装文档](./docs/install.md)
-- [Agent 安装 Prompt](./docs/AGENT_INSTALL_PROMPT.md)
-- [使用文档](./docs/usage.md)
-- [API 文档](./docs/api.md)
-- [故障排除](./docs/troubleshooting.md)
-- [开发者文档](./docs/development.md)
-- [更新记录](./CHANGELOG.md)
-- [主仓库 Agent 调试 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)
-
-## 项目简介
-
-这个面板适合：
-
-- 不想频繁敲命令、希望在浏览器里查看状态的人
-- 想在路由器后台直接管理锐捷账号和守护进程的人
-- 想查看健康监听、健康日志和运行环境摘要的人
-
-核心特点：
-
-- React + Vite + TypeScript 构建式前端
-- Shell CGI 后端，直接跑在 OpenWrt 上
-- 独立面板密码和会话保护
-- 适配桌面端与移动端
-- 支持健康监听、健康日志和运行环境可视化
-
-## 给 Agent 安装 / 排障
-
-- 让 Agent 帮你在路由器上安装面板： [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md)
-- 主脚本还没装好： [主仓库安装 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_INSTALL_PROMPT.md)
-- 已安装后让 Agent 排障： [主仓库调试 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)
+```text
+ browser ─────▶ panel :8080 ─────▶ core
+                uhttpd + CGI       /etc/ruijie/ruijiectl
+```
 
 ## 快速开始
 
-### 使用完整发布包
+<sub><code>01</code></sub>
 
-```bash
+在路由器终端下载固定版本的组合包并校验：
+
+```sh
 cd /tmp
 curl -fLO https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/v4.0.0/ruijie-openwrt-bundle.tar.gz
 curl -fLO https://github.com/huantuoshen-prog/ruijie-web-panel/releases/download/v4.0.0/SHA256SUMS
 grep ' ruijie-openwrt-bundle.tar.gz$' SHA256SUMS | sha256sum -c -
 ```
 
-解压、安装核心和面板的完整命令见 [安装文档](./docs/install.md)。请勿逐个下载 `main` 分支文件。
+解压和安装命令见 [安装文档](./docs/install.md)。请不要逐个下载 `main` 分支的文件。
 
-安装完成后：
+装好之后：
 
-1. 记住首次安装时设置的独立面板密码
-2. 浏览器访问 `http://路由器IP:8080/`
-3. 登录后进入总览页面
+| 步骤 | 做什么 |
+|:---:|---|
+| `1` | 记下安装时设置的面板密码 |
+| `2` | 浏览器打开 `http://192.168.5.1:8080/` 或 `http://192.168.1.1:8080/` |
+| `3` | 登录。同一浏览器会保持登录 30 天，访问时自动续期 |
 
-登录状态默认会在当前浏览器中保留 `30` 天，后续访问面板时会自动续期，不需要每天重新输入密码。
+## 界面
 
-常见路由器地址：
+<sub><code>02</code></sub>
 
-- `http://192.168.5.1:8080/`
-- `http://192.168.1.1:8080/`
+顶部四个标签页，首屏就是答案：现在有没有网。
 
-如果你想看完整安装、升级、回滚和卸载步骤：
-[docs/install.md](./docs/install.md)
+| 标签页 | 内容 |
+|---|---|
+| **状态** | 联网状态、连接链路图、重新认证 / 下线、守护进程启停、健康监听开关、最近事件 |
+| **账号** | 用户名、密码、运营商（电信 / 联通），HTTP / HTTPS 代理 |
+| **日志** | 认证日志与健康日志，按级别、类型、条数筛选，自动刷新 |
+| **系统** | 运行环境、关键文件路径、浅色 / 深色主题、退出 |
 
-## 功能概览
+连接链路图的读法（`━` 实线表示这一段通，`┅` 虚线表示断开或未知）：
 
-| 页面 | 能力 |
-|------|------|
-| 总览 | 在线状态、daemon 状态、最后认证时间、健康监听摘要 |
-| 账号 | 修改用户名、密码、运营商 |
-| 守护进程 | 启动 / 停止 / 重启 daemon，控制健康监听窗口 |
-| 日志 | 查看认证日志与健康日志，按级别和类型过滤 |
-| 设置 | 代理、主题、背景图、运行环境摘要 |
+| 链路 | 说明 |
+|---|---|
+| `● daemon ━━━ ● auth ━━━ ● internet` | 全部在线 |
+| `● daemon ━━━ ● auth ┅┅┅ ○ internet` | 认证后仍无法联网 |
+| `○ daemon ┅┅┅ ○ auth ┅┅┅ ○ internet` | 守护进程未运行 |
 
-额外说明：
+- 健康监听需要核心 4.0.0 及以上。核心首次安装后默认开启 3 天，升级不会自动重开。
+- 想让 Agent 帮忙分析当前状态，可以用核心仓库的 [调试 Prompt](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)。
 
-- 健康监听需要主仓库升级到支持版本后才能使用
-- 主脚本首次安装后默认开启 3 天健康监听；后续升级不会自动重开
-- 如果你想把当前状态直接交给 Agent 分析，可以使用主仓库的现成 Prompt：
-  [AGENT_DEBUG_PROMPT.md](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/blob/main/docs/AGENT_DEBUG_PROMPT.md)
+## 文档
 
-## 深入阅读
+<sub><code>03</code></sub>
 
-| 文档 | 说明 |
-|------|------|
-| [docs/install.md](./docs/install.md) | 系统要求、固定发布包、升级、回滚与卸载 |
-| [docs/AGENT_INSTALL_PROMPT.md](./docs/AGENT_INSTALL_PROMPT.md) | 给通用 Agent 的现成安装 Prompt |
-| [docs/usage.md](./docs/usage.md) | 页面功能、健康监听控制、日志、主题与背景 |
-| [docs/api.md](./docs/api.md) | `/ruijie-cgi/*` 路由、鉴权与请求/响应示例 |
-| [docs/troubleshooting.md](./docs/troubleshooting.md) | 安装失败、页面打不开、认证问题、安全注意事项 |
-| [docs/development.md](./docs/development.md) | 项目结构、本地 mock、API 扩展与前端测试 |
-| [CHANGELOG.md](./CHANGELOG.md) | 面板版本历史 |
+| 文档 | 内容 |
+|---|---|
+| [安装](./docs/install.md) | 系统要求、组合包、升级、回滚、卸载 |
+| [使用](./docs/usage.md) | 各标签页功能、健康监听、主题 |
+| [API](./docs/api.md) | `/ruijie-cgi/*` 路由、鉴权、请求与响应示例 |
+| [故障排除](./docs/troubleshooting.md) | 装不上、打不开、认证失败、安全注意事项 |
+| [开发](./docs/development.md) | 项目结构、本地 mock、前端测试 |
+| [Agent 安装 Prompt](./docs/AGENT_INSTALL_PROMPT.md) | 交给 Agent 代为安装 |
+| [更新记录](./CHANGELOG.md) | 版本历史 |
+
+技术栈：React + Vite + TypeScript 前端，Shell CGI 后端，独立面板密码与会话保护。
 
 ## 相关项目
 
-| 项目 | GitHub | 说明 |
-|------|--------|------|
-| **ruijie-gdstvc-autologin** | [链接](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin) | 主仓库，核心认证脚本 |
-| Qclaw | [链接](https://github.com/qiuzhi2046/Qclaw) | OpenClaw 桌面管家（非本项目） |
+<sub><code>04</code></sub>
 
-## 反馈与贡献
+| 项目 | 说明 |
+|---|---|
+| [**ruijie-gdstvc-autologin**](https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin) | 认证核心：自动登录、断线重连、健康监听、JSON CLI |
+| [Qclaw](https://github.com/qiuzhi2046/Qclaw) | OpenClaw 桌面管家（非本项目） |
 
-欢迎新生和路由器爱好者反馈安装体验、固件兼容性和文档问题。提交 issue 时请删除账号、密码、MAC 地址、内网 IP、会话令牌和完整认证链接。
+---
 
-## 许可证
-
-本项目使用 MIT 许可证。
-完整文本见 [LICENSE](./LICENSE)。
+<sub>
+反馈安装体验、固件兼容性或文档问题，欢迎提 issue。提交前请删掉账号、密码、MAC 地址、内网 IP、会话令牌和完整认证链接。<br>
+本项目不是学校官方软件。MIT 许可证，见 <a href="./LICENSE">LICENSE</a>。<br>
+关键词：OpenWrt 锐捷认证 · 校园网自动登录 · 广东科学技术职业学院 · 广科院 · GDSTVC · iStoreOS · ImmortalWrt · 路由器 Web 面板
+</sub>
