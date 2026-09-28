@@ -30,8 +30,8 @@ function setup() {
 
 it('keeps unsaved username while background polling refreshes status', async () => {
   const poll = setup();
-  await screen.findByRole('heading', {name:'总览',level:2});
-  fireEvent.click(screen.getByRole('button',{name:'账号 认证账号与网络配置'}));
+  await screen.findByRole('heading', {name:'状态',level:2});
+  fireEvent.click(screen.getByRole('button',{name:'账号'}));
   const input = screen.getByRole('textbox',{name:'用户名'});
   await waitFor(() => expect(input).toHaveValue('saved-user'));
   fireEvent.change(input,{target:{value:'unsaved-user'}});
@@ -42,8 +42,8 @@ it('keeps unsaved username while background polling refreshes status', async () 
 
 it('keeps password and reports an error when a business write fails', async () => {
   setup();
-  await screen.findByRole('heading', {name:'总览',level:2});
-  fireEvent.click(screen.getByRole('button',{name:'账号 认证账号与网络配置'}));
+  await screen.findByRole('heading', {name:'状态',level:2});
+  fireEvent.click(screen.getByRole('button',{name:'账号'}));
   await waitFor(() => expect(screen.getByRole('textbox',{name:'用户名'})).toHaveValue('saved-user'));
   const password = screen.getByLabelText('密码');
   fireEvent.change(password,{target:{value:'test-password'}});

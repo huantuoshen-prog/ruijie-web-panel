@@ -1,70 +1,18 @@
-import {
-  startTransition,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode
-} from "react";
-import { ApiError, panelApi } from "./lib/api";
-import {
-  clearBackgroundAsset,
-  loadBackgroundAsset,
-  saveBackgroundAsset
-} from "./lib/background";
-import {
-  accountTypeLabel,
-  daemonTone,
-  logTone,
-  metricValue,
-  networkTone,
-  operatorLabel
-} from "./lib/presenters";
-import type {
-  AccountResponse,
-  HealthDuration,
-  HealthStatusResponse,
-  LogLevel,
-  LogLine,
-  RuntimeStatusResponse,
-  SectionId,
-  SettingsResponse,
-  StatusResponse,
-  ThemeMode
-} from "./lib/types";
+import { startTransition, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { accountTypeLabel, logTone, operatorLabel } from "./lib/presenters";
+import type { HealthDuration, HealthStatusResponse, LogLevel, ThemeMode } from "./lib/types";
+import { usePanel, type Panel } from "./lib/usePanel";
 
-type AuthPhase = "checking" | "authenticated" | "unauthenticated";
-type NoticeTone = "info" | "success" | "warning" | "error";
-type LogSource = "daemon" | "health";
+type Tab = "status" | "account" | "logs" | "system";
 
-interface Notice {
-  tone: NoticeTone;
-  message: string;
-}
-
-interface AccountFormState {
-  username: string;
-  password: string;
-  operator: string;
-  accountType: string;
-}
-
-interface SettingsFormState {
-  proxyUrl: string;
-  proxyUrlHttps: string;
-}
-
-const SECTION_ITEMS: Array<{ id: SectionId; label: string; description: string }> = [
-  { id: "overview", label: "总览", description: "核心状态与快捷操作" },
-  { id: "account", label: "账号", description: "认证账号与网络配置" },
-  { id: "daemon", label: "守护进程", description: "服务控制与运行指标" },
-  { id: "logs", label: "日志", description: "实时事件与筛选" },
-  { id: "settings", label: "设置", description: "代理、主题与个性化" }
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "status", label: "状态" },
+  { id: "account", label: "账号" },
+  { id: "logs", label: "日志" },
+  { id: "system", label: "系统" }
 ];
 
-const LOG_LEVEL_OPTIONS: Array<{ value: LogLevel; label: string }> = [
+const LEVELS: Array<{ value: LogLevel; label: string }> = [
   { value: "", label: "全部" },
   { value: "OK", label: "成功" },
   { value: "INFO", label: "信息" },
@@ -73,7 +21,7 @@ const LOG_LEVEL_OPTIONS: Array<{ value: LogLevel; label: string }> = [
   { value: "ERROR", label: "错误" }
 ];
 
-const HEALTH_LOG_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
+const HEALTH_TYPES: Array<{ value: string; label: string }> = [
   { value: "", label: "全部类型" },
   { value: "baseline", label: "基线采样" },
   { value: "auth_success", label: "认证成功" },
@@ -83,1673 +31,528 @@ const HEALTH_LOG_TYPE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "monitor", label: "监听开关" }
 ];
 
-const LOG_LIMIT_OPTIONS = [100, 200, 500];
-const THEME_STORAGE_KEY = "ruijie-panel.theme";
-const BACKGROUND_ENABLED_KEY = "ruijie-panel.background.enabled";
-const BACKGROUND_NAME_KEY = "ruijie-panel.background.name";
-const MAX_BACKGROUND_BYTES = 20 * 1024 * 1024;
+const DURATIONS: Array<{ value: HealthDuration; label: string }> = [
+  { value: "1d", label: "1 天" },
+  { value: "3d", label: "3 天" },
+  { value: "7d", label: "7 天" },
+  { value: "permanent", label: "永久" }
+];
+
+const THEME_KEY = "ruijie-panel.theme";
 
 function cn(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(" ");
 }
 
-function statusMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
-    return error.message || fallback;
-  }
-
-  if (error instanceof Error) {
-    return error.message || fallback;
-  }
-
-  return fallback;
-}
-
-function formatRemainingSeconds(value?: number | null): string {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "永久";
-  }
-
-  if (value <= 0) {
-    return "已到期";
-  }
-
-  if (value >= 86400) {
-    return `${Math.ceil(value / 86400)} 天`;
-  }
-
-  if (value >= 3600) {
-    return `${Math.ceil(value / 3600)} 小时`;
-  }
-
-  if (value >= 60) {
-    return `${Math.ceil(value / 60)} 分钟`;
-  }
-
+function remaining(value?: number | null): string {
+  if (typeof value !== "number" || Number.isNaN(value)) return "永久";
+  if (value <= 0) return "已到期";
+  if (value >= 86400) return `${Math.ceil(value / 86400)} 天`;
+  if (value >= 3600) return `${Math.ceil(value / 3600)} 小时`;
+  if (value >= 60) return `${Math.ceil(value / 60)} 分钟`;
   return `${value} 秒`;
 }
 
-function healthModeLabel(health: HealthStatusResponse | null): string {
-  if (!health) {
-    return "等待加载";
-  }
-
-  if (health.supported === false) {
-    return "需升级主脚本";
-  }
-
-  if (!health.enabled) {
-    return "未启用";
-  }
-
-  if (health.mode === "permanent") {
-    return "永久开启";
-  }
-
-  return `剩余 ${formatRemainingSeconds(health.remaining_seconds)}`;
+function healthLabel(health: HealthStatusResponse | null): string {
+  if (!health) return "—";
+  if (health.supported === false) return "主脚本不支持";
+  if (!health.enabled) return "未开启";
+  if (health.mode === "permanent") return "永久开启";
+  return `剩余 ${remaining(health.remaining_seconds)}`;
 }
 
-function Icon(props: { section: SectionId }) {
-  switch (props.section) {
-    case "overview":
-      return (
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M3 4.5h14v3H3zM3 9.5h8v6H3zM13 9.5h4v2H13zM13 13.5h4v2H13z" />
-        </svg>
-      );
-    case "account":
-      return (
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M10 10a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 10 10Zm0 2c-3.04 0-5.5 1.79-5.5 4v1h11v-1c0-2.21-2.46-4-5.5-4Z" />
-        </svg>
-      );
-    case "daemon":
-      return (
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M7 2h6v2h2.5A1.5 1.5 0 0 1 17 5.5v9A1.5 1.5 0 0 1 15.5 16H13v2H7v-2H4.5A1.5 1.5 0 0 1 3 14.5v-9A1.5 1.5 0 0 1 4.5 4H7Zm-1 5v6h8V7Z" />
-        </svg>
-      );
-    case "logs":
-      return (
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="M4 3h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 3v2h8V6Zm0 4v2h8v-2Zm0 4v1h5v-1Z" />
-        </svg>
-      );
-    case "settings":
-      return (
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="m10 2 1.1 2.2 2.4.4-.8 2.3 1.7 1.8-1.7 1.8.8 2.3-2.4.4L10 18l-1.1-2.2-2.4-.4.8-2.3-1.7-1.8 1.7-1.8-.8-2.3 2.4-.4Zm0 5a3 3 0 1 0 3 3 3 3 0 0 0-3-3Z" />
-        </svg>
-      );
+function formatTime(value?: string | number): string {
+  const epoch = Number(value);
+  if (Number.isFinite(epoch) && epoch > 1e9) {
+    return new Date(epoch * 1000).toLocaleString("zh-CN", { hour12: false });
   }
+  return value ? String(value) : "—";
 }
 
-function MetricCard(props: {
-  eyebrow: string;
-  value: string;
-  detail: string;
-  tone: "positive" | "warning" | "neutral" | "info";
-}) {
+function Rows(props: { items: Array<[string, ReactNode]> }) {
   return (
-    <article className="metric-card surface">
-      <p className="surface__eyebrow">{props.eyebrow}</p>
-      <strong className="metric-card__value">{props.value}</strong>
-      <div className="metric-card__footer">
-        <span className={cn("status-pill", `status-pill--${props.tone}`)}>{props.detail}</span>
-      </div>
-    </article>
-  );
-}
-
-function Surface(props: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="surface">
-      <div className="surface__header">
-        <div>
-          <p className="surface__eyebrow">{props.eyebrow}</p>
-          <h3>{props.title}</h3>
-          <p className="surface__body">{props.description}</p>
-        </div>
-        {props.actions ? <div className="surface__actions">{props.actions}</div> : null}
-      </div>
-      {props.children}
-    </section>
-  );
-}
-
-function DefinitionList(props: { items: Array<[string, ReactNode]> }) {
-  return (
-    <dl className="definition-list">
-      {props.items.map(([label, value]) => (
-        <div key={label} className="definition-list__item">
-          <dt>{label}</dt>
-          <dd>{value}</dd>
+    <dl className="rows">
+      {props.items.map(([k, v]) => (
+        <div key={k}>
+          <dt>{k}</dt>
+          <dd>{v === "" || v === null || v === undefined ? "—" : v}</dd>
         </div>
       ))}
     </dl>
   );
 }
 
-function EmptyState(props: { title: string; description: string; compact?: boolean }) {
+function Section(props: { index?: string; title: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <div className={cn("empty-state", props.compact && "empty-state--compact")}>
-      <div className="empty-state__mark" aria-hidden="true" />
-      <div>
-        <h3>{props.title}</h3>
-        <p>{props.description}</p>
-      </div>
+    <section className="section">
+      <header>
+        <h3>
+          {props.index ? <span className="section__no">{props.index}</span> : null}
+          {props.title}
+        </h3>
+        {props.aside}
+      </header>
+      {props.children}
+    </section>
+  );
+}
+
+function Btn(props: {
+  children: ReactNode;
+  onClick?: () => void;
+  busy?: boolean;
+  kind?: "primary" | "danger" | "plain";
+  type?: "button" | "submit";
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type={props.type ?? "button"}
+      className={cn("btn", props.kind && `btn--${props.kind}`)}
+      onClick={props.onClick}
+      disabled={props.busy || props.disabled}
+      aria-busy={props.busy || undefined}
+    >
+      {props.children}
+    </button>
+  );
+}
+
+type Tone = "ok" | "warn" | "bad" | "off";
+
+function Node(props: { label: string; value: string; tone: Tone }) {
+  return (
+    <div className={cn("chain__node", `is-${props.tone}`)}>
+      <span className="chain__label">{props.label}</span>
+      <span className="chain__value">{props.value}</span>
     </div>
   );
 }
 
+function StatusPage({ p }: { p: Panel }) {
+  const s = p.status;
+  const online = s?.online;
+  const netTone: Tone = online === true ? "ok" : online === false ? "bad" : "off";
+  const daemonTone: Tone = !s?.daemon_running ? "off" : s.daemon_state === "ONLINE" ? "ok" : "warn";
+  const authTone: Tone = online === true ? "ok" : s?.daemon_running ? "warn" : "off";
+  const recent = [...p.logs].slice(-6).reverse();
+  const strip = p.logs.slice(-48);
+
+  return (
+    <>
+      <section className={cn("hero", `is-${netTone}`)}>
+        <div className="hero__head">
+          <div>
+            <p className="kicker">{s?.stale ? "状态可能过期" : s?.observed_at ? `采集于 ${formatTime(s.observed_at)}` : "实时状态"}</p>
+            <h2 className="hero__title">
+              {online === true ? "已联网" : online === false ? "未联网" : "状态未知"}
+            </h2>
+            <p className="hero__sub">
+              <span className="mono">{s?.username || "未配置账号"}</span>
+              <span>{operatorLabel(s?.operator ?? "")}</span>
+              <span>{accountTypeLabel(s?.account_type ?? "")}</span>
+            </p>
+          </div>
+          <div className="hero__actions">
+            <Btn kind="primary" busy={p.busy === "auth-reauth"} onClick={() => void p.authAction("reauth")}>
+              重新认证
+            </Btn>
+            <Btn busy={p.busy === "auth-logout"} onClick={() => void p.authAction("logout")}>
+              下线
+            </Btn>
+          </div>
+        </div>
+
+        <div className="chain" aria-label="连接链路">
+          <Node label="守护进程" value={s?.daemon_running ? s.daemon_state || "运行中" : "已停止"} tone={daemonTone} />
+          <span className={cn("chain__wire", `is-${daemonTone === "ok" ? authTone : "off"}`)} />
+          <Node label="锐捷认证" value={s?.last_auth ? s.last_auth.slice(5, 16) : "—"} tone={authTone} />
+          <span className={cn("chain__wire", `is-${netTone}`)} />
+          <Node label="互联网" value={online === true ? "可达" : online === false ? "不可达" : "未知"} tone={netTone} />
+        </div>
+      </section>
+
+      <div className="grid2">
+        <Section index="01" title="守护进程">
+          <div className="readout">
+            <div>
+              <span>已运行</span>
+              <strong>{s?.daemon_uptime || "—"}</strong>
+            </div>
+            <div>
+              <span>PID</span>
+              <strong className="mono">{s?.daemon_pid || "—"}</strong>
+            </div>
+          </div>
+          <Rows items={[["上次认证", s?.last_auth], ["主脚本", s?.version ? `v${s.version}` : ""]]} />
+          <div className="actions">
+            {s?.daemon_running ? (
+              <>
+                <Btn busy={p.busy === "daemon-restart"} onClick={() => void p.daemon("restart")}>重启</Btn>
+                <Btn kind="danger" busy={p.busy === "daemon-stop"} onClick={() => void p.daemon("stop")}>停止</Btn>
+              </>
+            ) : (
+              <Btn kind="primary" busy={p.busy === "daemon-start"} onClick={() => void p.daemon("start")}>启动</Btn>
+            )}
+          </div>
+        </Section>
+
+        <Section index="02" title="健康监听">
+          {p.health?.supported === false ? (
+            <p className="muted">{p.health.message || "主脚本版本过低，升级后可用。"}</p>
+          ) : (
+            <>
+              <div className="readout">
+                <div>
+                  <span>状态</span>
+                  <strong>{healthLabel(p.health)}</strong>
+                </div>
+                <div>
+                  <span>采样间隔</span>
+                  <strong>{p.health?.baseline_interval ? `${p.health.baseline_interval}s` : "—"}</strong>
+                </div>
+              </div>
+              <Rows
+                items={[
+                  ["采集器", p.health?.collector_active ? "运行中" : "未运行"],
+                  ["最近事件", p.health?.last_event_at]
+                ]}
+              />
+              <div className="actions">
+                <div className="seg seg--inline" role="group" aria-label="开启时长">
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      className={cn(d.value === "permanent" && p.health?.enabled && p.health.mode === "permanent" && "is-on")}
+                      disabled={p.busy !== null}
+                      onClick={() => void p.healthAction("enable", d.value)}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                {p.health?.enabled ? (
+                  <Btn kind="danger" busy={p.busy === "health-off"} onClick={() => void p.healthAction("disable")}>
+                    关闭
+                  </Btn>
+                ) : null}
+              </div>
+            </>
+          )}
+        </Section>
+      </div>
+
+      <Section
+        index="03"
+        title="最近事件"
+        aside={
+          strip.length ? (
+            <div className="strip" aria-hidden="true">
+              {strip.map((line, i) => (
+                <i key={i} className={`strip--${logTone(line.level)}`} />
+              ))}
+            </div>
+          ) : null
+        }
+      >
+        {recent.length ? <LogTable lines={recent} /> : <p className="muted">暂无日志。</p>}
+      </Section>
+    </>
+  );
+}
+
+function LogTable(props: { lines: Panel["logs"] }) {
+  return (
+    <div className="log">
+      {props.lines.map((line, i) => (
+        <div key={`${line.ts}-${i}`} className={cn("log__row", `log__row--${logTone(line.level)}`)}>
+          <time>{line.ts}</time>
+          <span className="log__lv">{line.level || "-"}</span>
+          <span className="log__msg">
+            {line.msg}
+            {line.details ? <small>{line.details}</small> : null}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AccountPage({ p }: { p: Panel }) {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void p.saveAccount();
+  };
+  const submitProxy = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void p.saveSettings();
+  };
+
+  return (
+    <div className="grid2">
+      <Section index="01" title="校园网账号">
+        <form className="form" onSubmit={submit}>
+          <label>
+            <span>用户名</span>
+            <input
+              name="username"
+              autoComplete="username"
+              value={p.account.username}
+              onChange={(e) => p.editAccount({ username: e.target.value })}
+            />
+          </label>
+          <label>
+            <span>密码</span>
+            <input
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder={p.accountRevision ? "不修改请留空" : ""}
+              value={p.account.password}
+              onChange={(e) => p.editAccount({ password: e.target.value })}
+            />
+          </label>
+          <fieldset className="seg">
+            <legend>运营商</legend>
+            {[
+              ["DianXin", "校园电信"],
+              ["LianTong", "校园联通"]
+            ].map(([value, label]) => (
+              <label key={value} className={cn(p.account.operator === value && "is-on")}>
+                <input
+                  type="radio"
+                  name="operator"
+                  value={value}
+                  checked={p.account.operator === value}
+                  onChange={() => p.editAccount({ operator: value })}
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          <p className="muted small">账号类型：{accountTypeLabel(p.account.accountType)}</p>
+          <div className="actions">
+            <Btn type="submit" kind="primary" busy={p.busy === "account"}>保存账号配置</Btn>
+            {p.accountDirty ? <span className="muted small">有未保存的修改</span> : null}
+          </div>
+        </form>
+      </Section>
+
+      <Section index="02" title="代理">
+        <form className="form" onSubmit={submitProxy}>
+          <label>
+            <span>HTTP 代理</span>
+            <input
+              name="proxyUrl"
+              placeholder="http://host:port"
+              value={p.settings.proxyUrl}
+              onChange={(e) => p.editSettings({ proxyUrl: e.target.value })}
+            />
+          </label>
+          <label>
+            <span>HTTPS 代理</span>
+            <input
+              name="proxyUrlHttps"
+              placeholder="留空则同 HTTP"
+              value={p.settings.proxyUrlHttps}
+              onChange={(e) => p.editSettings({ proxyUrlHttps: e.target.value })}
+            />
+          </label>
+          <p className="muted small">认证请求通过这里转发。一般不需要设置。</p>
+          <div className="actions">
+            <Btn type="submit" busy={p.busy === "settings"}>保存代理</Btn>
+          </div>
+        </form>
+      </Section>
+    </div>
+  );
+}
+
+function LogsPage({ p }: { p: Panel }) {
+  const lines = [...p.logs].reverse();
+  return (
+    <Section
+      title={p.logSource === "health" ? "健康日志" : "认证日志"}
+      aside={<span className="muted small">{p.logs.length} / {p.logTotal} 条</span>}
+    >
+      <div className="toolbar">
+        <div className="seg seg--inline" role="group" aria-label="日志来源">
+          <button type="button" className={cn(p.logSource === "daemon" && "is-on")} onClick={() => p.setLogSource("daemon")}>
+            认证日志
+          </button>
+          <button type="button" className={cn(p.logSource === "health" && "is-on")} onClick={() => p.setLogSource("health")}>
+            健康日志
+          </button>
+        </div>
+        <select aria-label="级别" value={p.logLevel} onChange={(e) => p.setLogLevel(e.target.value as LogLevel)}>
+          {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+        </select>
+        {p.logSource === "health" ? (
+          <select aria-label="类型" value={p.healthLogType} onChange={(e) => p.setHealthLogType(e.target.value)}>
+            {HEALTH_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        ) : null}
+        <select aria-label="条数" value={p.logLimit} onChange={(e) => p.setLogLimit(Number(e.target.value))}>
+          {[100, 200, 500].map((n) => <option key={n} value={n}>最近 {n} 条</option>)}
+        </select>
+        <label className="check">
+          <input type="checkbox" checked={p.autoRefreshLogs} onChange={(e) => p.setAutoRefreshLogs(e.target.checked)} />
+          自动刷新
+        </label>
+        <Btn busy={p.logsLoading} onClick={() => void p.refreshLogs()}>刷新</Btn>
+      </div>
+      {lines.length ? <LogTable lines={lines} /> : <p className="muted">没有符合条件的日志。</p>}
+    </Section>
+  );
+}
+
+function SystemPage({ p, theme, setTheme }: { p: Panel; theme: ThemeMode; setTheme: (t: ThemeMode) => void }) {
+  const r = p.runtime;
+  const yes = (v?: boolean) => (v === undefined ? "" : v ? "有" : "无");
+  return (
+    <div className="grid2">
+      <Section index="01" title="运行环境">
+        {r?.supported === false ? (
+          <p className="muted">{r.message || "主脚本版本过低，升级后可用。"}</p>
+        ) : (
+          <Rows
+            items={[
+              ["平台", r?.platform],
+              ["内核", r?.kernel],
+              ["架构", r?.arch],
+              ["Shell", r?.shell],
+              ["BusyBox / curl / procd", r ? `${yes(r.busybox_present)} / ${yes(r.curl_present)} / ${yes(r.procd_present)}` : ""],
+              ["主脚本版本", p.status?.version]
+            ]}
+          />
+        )}
+      </Section>
+      <Section index="02" title="文件路径">
+        <Rows
+          items={[
+            ["脚本目录", <code>{r?.script_dir}</code>],
+            ["配置文件", <code>{r?.config_file}</code>],
+            ["守护日志", <code>{r?.daemon_logfile}</code>],
+            ["健康日志", <code>{r?.health_logfile}</code>],
+            ["面板目录", <code>{r?.panel_web_root}</code>]
+          ]}
+        />
+      </Section>
+      <Section index="03" title="界面">
+        <div className="actions">
+          <div className="seg seg--inline" role="group" aria-label="主题">
+            <button type="button" className={cn(theme === "light" && "is-on")} onClick={() => setTheme("light")}>浅色</button>
+            <button type="button" className={cn(theme === "dark" && "is-on")} onClick={() => setTheme("dark")}>深色</button>
+          </div>
+          <Btn busy={p.busy === "logout"} onClick={() => void p.logout()}>退出面板</Btn>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function Login({ p }: { p: Panel }) {
+  const [password, setPassword] = useState("");
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (await p.login(password)) setPassword("");
+  };
+  return (
+    <main className="login">
+      <form className="login__box" onSubmit={(e) => void submit(e)}>
+        <div className="brand">
+          <span className="brand__mark" aria-hidden="true" />
+          <strong>RUIJIE</strong>
+          <span className="brand__sub">校园网认证</span>
+        </div>
+        <h1>输入面板密码</h1>
+        <p className="muted small">路由器本地面板，登录状态保留 30 天。</p>
+        <label>
+          <span>密码</span>
+          <input
+            type="password"
+            autoFocus
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        {p.loginError ? <p className="error small" role="alert">{p.loginError}</p> : null}
+        <Btn type="submit" kind="primary" busy={p.busy === "login"} disabled={!password}>登录</Btn>
+      </form>
+    </main>
+  );
+}
+
 function App() {
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    return stored === "light" ? "light" : "dark";
-  });
-  const [activeSection, setActiveSection] = useState<SectionId>("overview");
-  const [authPhase, setAuthPhase] = useState<AuthPhase>("checking");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLogsLoading, setIsLogsLoading] = useState(false);
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [health, setHealth] = useState<HealthStatusResponse | null>(null);
-  const [runtime, setRuntime] = useState<RuntimeStatusResponse | null>(null);
-  const [accountForm, setAccountForm] = useState<AccountFormState>({
-    username: "",
-    password: "",
-    operator: "DianXin",
-    accountType: "student"
-  });
-  const [settingsForm, setSettingsForm] = useState<SettingsFormState>({
-    proxyUrl: "",
-    proxyUrlHttps: ""
-  });
-  const [accountRevision, setAccountRevision] = useState("");
-  const [settingsRevision, setSettingsRevision] = useState("");
-  const [accountDirty, setAccountDirty] = useState(false);
-  const [settingsDirty, setSettingsDirty] = useState(false);
-  const [logs, setLogs] = useState<LogLine[]>([]);
-  const [logSource, setLogSource] = useState<LogSource>("daemon");
-  const [logLevel, setLogLevel] = useState<LogLevel>("");
-  const [healthLogType, setHealthLogType] = useState("");
-  const [logLimit, setLogLimit] = useState(200);
-  const [logTotal, setLogTotal] = useState(0);
-  const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
-  const [backgroundEnabled, setBackgroundEnabled] = useState(
-    localStorage.getItem(BACKGROUND_ENABLED_KEY) !== "false"
+  const p = usePanel();
+  const [tab, setTab] = useState<Tab>("status");
+  const [theme, setTheme] = useState<ThemeMode>(() =>
+    localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light"
   );
-  const [backgroundName, setBackgroundName] = useState<string | null>(
-    localStorage.getItem(BACKGROUND_NAME_KEY)
-  );
-  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
-  const [personalizationOpen, setPersonalizationOpen] = useState(false);
-  const backgroundObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
-  const setBackgroundFromBlob = useEffectEvent((blob: Blob | null) => {
-    if (backgroundObjectUrlRef.current) {
-      URL.revokeObjectURL(backgroundObjectUrlRef.current);
-      backgroundObjectUrlRef.current = null;
-    }
-
-    if (!blob) {
-      setBackgroundUrl(null);
-      return;
-    }
-
-    const nextUrl = URL.createObjectURL(blob);
-    backgroundObjectUrlRef.current = nextUrl;
-    setBackgroundUrl(nextUrl);
-  });
-
-  // useEffectEvent callbacks stay out of deps so initialization does not resubscribe on every render.
+  const { notice, setNotice } = p;
   useEffect(() => {
-    void (async () => {
-      const blob = await loadBackgroundAsset();
-      setBackgroundFromBlob(blob);
-    })();
-
-    return () => {
-      if (backgroundObjectUrlRef.current) {
-        URL.revokeObjectURL(backgroundObjectUrlRef.current);
-      }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const requireLogin = useEffectEvent((message: string) => {
-    setAuthPhase("unauthenticated");
-    setLoginError(message);
-    setBusyAction(null);
-  });
-
-  const handleRequestFailure = useEffectEvent(
-    (error: unknown, fallback: string, silent = false): boolean => {
-      if (error instanceof ApiError && error.status === 401) {
-        requireLogin(error.message || "登录状态已失效，请重新输入面板密码。");
-        return true;
-      }
-
-      if (!silent) {
-        setNotice({
-          tone: "error",
-          message: statusMessage(error, fallback)
-        });
-      }
-
-      return false;
-    }
-  );
-
-  const hydrateForms = useEffectEvent(
-    (
-      nextStatus: StatusResponse,
-      nextAccount: AccountResponse,
-      nextSettings: SettingsResponse,
-      nextHealth: HealthStatusResponse,
-      nextRuntime: RuntimeStatusResponse
-    ) => {
-      setStatus(nextStatus);
-      setHealth(nextHealth);
-      setRuntime(nextRuntime);
-      setAccountRevision(nextAccount.revision ?? "");
-      setSettingsRevision(nextSettings.revision ?? "");
-      if (!accountDirty) {
-        setAccountForm((current) => ({
-          username: nextAccount.username || nextStatus.username || "",
-          password: current.password,
-          operator: nextAccount.operator || nextStatus.operator || "DianXin",
-          accountType: nextAccount.account_type || nextStatus.account_type || current.accountType
-        }));
-      }
-      if (!settingsDirty) {
-        setSettingsForm({
-          proxyUrl: nextSettings.proxy_url ?? "",
-          proxyUrlHttps: nextSettings.proxy_url_https ?? ""
-        });
-      }
-    }
-  );
-
-  const refreshLogs = useEffectEvent(async (silent = false) => {
-    if (!silent) {
-      setIsLogsLoading(true);
-    }
-
-    try {
-      if (logSource === "health") {
-        const payload = await panelApi.getHealthLogs(logLevel, healthLogType, logLimit);
-        setLogs(
-          payload.entries.map((entry) => ({
-            ts: entry.ts,
-            level: entry.level,
-            msg: entry.message,
-            type: entry.type,
-            details:
-              typeof entry.details === "string"
-                ? entry.details
-                : entry.details
-                  ? JSON.stringify(entry.details)
-                  : ""
-          }))
-        );
-        setLogTotal(payload.total);
-      } else {
-        const payload = await panelApi.getLogs(logLevel, logLimit);
-        setLogs(payload.lines);
-        setLogTotal(payload.total);
-      }
-    } catch (error) {
-      handleRequestFailure(error, "无法读取日志。", silent);
-    } finally {
-      if (!silent) {
-        setIsLogsLoading(false);
-      }
-    }
-  });
-
-  const refreshPanel = useEffectEvent(async (includeLogs = true, silent = false) => {
-    if (!silent) {
-      setIsRefreshing(true);
-    }
-
-    try {
-      const [nextStatus, nextAccount, nextSettings, nextHealth, nextRuntime] = await Promise.all([
-        panelApi.getStatus(),
-        panelApi.getAccount(),
-        panelApi.getSettings(),
-        panelApi.getHealth(),
-        panelApi.getRuntime()
-      ]);
-
-      hydrateForms(nextStatus, nextAccount, nextSettings, nextHealth, nextRuntime);
-      setNotice((current) => (current?.tone === "error" ? null : current));
-
-      if (includeLogs) {
-        await refreshLogs(silent);
-      }
-    } catch (error) {
-      handleRequestFailure(error, "无法加载面板状态。", silent);
-    } finally {
-      if (!silent) {
-        setIsRefreshing(false);
-      }
-    }
-  });
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const auth = await panelApi.checkAuth();
-
-        if (auth.authenticated) {
-          setAuthPhase("authenticated");
-          await refreshPanel(true, false);
-        } else {
-          setAuthPhase("unauthenticated");
-        }
-      } catch (error) {
-        setAuthPhase("unauthenticated");
-        setNotice({
-          tone: "error",
-          message: statusMessage(error, "无法确认当前登录状态。")
-        });
-      }
-    })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (authPhase !== "authenticated") {
-      return;
-    }
-
-    void refreshLogs(false);
-  }, [authPhase, logLevel, logLimit, logSource, healthLogType]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (authPhase !== "authenticated") {
-      return;
-    }
-
-    const statusTimer = window.setInterval(() => {
-      void refreshPanel(false, true);
-    }, 15000);
-
-    let logsTimer = 0;
-    if (autoRefreshLogs) {
-      logsTimer = window.setInterval(() => {
-        void refreshLogs(true);
-      }, 20000);
-    }
-
-    return () => {
-      window.clearInterval(statusTimer);
-      if (logsTimer) {
-        window.clearInterval(logsTimer);
-      }
-    };
-  }, [authPhase, autoRefreshLogs]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const goToSection = (section: SectionId) => {
-    startTransition(() => {
-      setActiveSection(section);
-    });
-  };
-
-  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBusyAction("login");
-    setLoginError("");
-
-    try {
-      const result = await panelApi.login(loginPassword);
-
-      if (!result.success) {
-        setLoginError(result.message ?? "面板密码错误。");
-        return;
-      }
-
-      setAuthPhase("authenticated");
-      setLoginPassword("");
-      setNotice({
-        tone: "success",
-        message: "已登录面板，正在同步当前状态。"
-      });
-      await refreshPanel(true, false);
-    } catch (error) {
-      setLoginError(statusMessage(error, "登录失败，请稍后重试。"));
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleLogout = async () => {
-    setBusyAction("logout");
-
-    try {
-      await panelApi.logout();
-      setAuthPhase("unauthenticated");
-      setNotice({
-        tone: "info",
-        message: "当前会话已退出。"
-      });
-    } catch (error) {
-      handleRequestFailure(error, "退出登录失败。");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleAccountInput = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = event.target;
-
-    setAccountForm((current) => ({
-      ...current,
-      [name]: value
-    }));
-    setAccountDirty(true);
-  };
-
-  const handleSettingsInput = (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = event.target;
-
-    setSettingsForm((current) => ({
-      ...current,
-      [name]: value
-    }));
-    setSettingsDirty(true);
-  };
-
-  const handleSaveAccount = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!accountForm.username.trim() || (!accountForm.password && !accountRevision)) {
-      setNotice({
-        tone: "warning",
-        message: "保存账号前需要同时填写用户名和密码。"
-      });
-      return;
-    }
-
-    setBusyAction("account");
-
-    try {
-      const result = await panelApi.saveAccount({
-        username: accountForm.username.trim(),
-        password: accountForm.password,
-        operator: accountForm.operator,
-        revision: accountRevision
-      });
-
-      setAccountForm((current) => ({
-        ...current,
-        password: ""
-      }));
-      setAccountDirty(false);
-
-      setNotice({
-        tone: "success",
-        message: result.message || "账号配置已保存。"
-      });
-
-      await refreshPanel(false, true);
-    } catch (error) {
-      handleRequestFailure(error, "账号配置保存失败。");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleSaveSettings = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setBusyAction("settings");
-
-    try {
-      const result = await panelApi.saveSettings({
-        proxy_url: settingsForm.proxyUrl,
-        proxy_url_https: settingsForm.proxyUrlHttps,
-        revision: settingsRevision
-      });
-
-      setNotice({
-        tone: "success",
-        message: result.message || "代理设置已保存。"
-      });
-      setSettingsDirty(false);
-
-      await refreshPanel(false, true);
-    } catch (error) {
-      handleRequestFailure(error, "代理设置保存失败。");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleDaemonAction = async (action: "start" | "stop" | "restart") => {
-    setBusyAction(`daemon-${action}`);
-
-    try {
-      const result = await panelApi.runDaemon(action);
-      setNotice({
-        tone: "success",
-        message: result.message || "守护进程状态已更新。"
-      });
-      await refreshPanel(true, false);
-    } catch (error) {
-      handleRequestFailure(error, "守护进程操作失败。");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleAuthAction = async (action: "ensure" | "reauth" | "logout") => {
-    setBusyAction(`auth-${action}`);
-    try {
-      const result = await panelApi.runAuth(action);
-      setNotice({ tone: "success", message: result.message || "认证操作已完成。" });
-      await refreshPanel(true, false);
-    } catch (error) {
-      handleRequestFailure(error, "认证操作失败。");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleHealthAction = async (action: "enable" | "disable", duration?: HealthDuration) => {
-    setBusyAction(
-      action === "enable" ? `health-enable-${duration ?? "unknown"}` : "health-disable"
-    );
-
-    try {
-      const result = await panelApi.updateHealth(action, duration);
-      setHealth(result);
-      setNotice({
-        tone: "success",
-        message:
-          action === "enable"
-            ? `健康监听已开启${duration ? `（${duration}）` : ""}。`
-            : "健康监听已关闭。"
-      });
-      await refreshPanel(logSource === "health", false);
-    } catch (error) {
-      handleRequestFailure(error, "健康监听操作失败。");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleBackgroundUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    if (file.size > MAX_BACKGROUND_BYTES) {
-      setNotice({
-        tone: "warning",
-        message: "背景图不能超过 20MB，请压缩后再上传。"
-      });
-      event.target.value = "";
-      return;
-    }
-
-    setBusyAction("background");
-
-    try {
-      await saveBackgroundAsset(file);
-      localStorage.setItem(BACKGROUND_NAME_KEY, file.name);
-      localStorage.setItem(BACKGROUND_ENABLED_KEY, "true");
-      setBackgroundEnabled(true);
-      setBackgroundName(file.name);
-      setBackgroundFromBlob(file);
-      setNotice({
-        tone: "success",
-        message: "背景图已更新。当前界面会自动增加遮罩，保证可读性。"
-      });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        message: statusMessage(error, "背景图保存失败。")
-      });
-    } finally {
-      setBusyAction(null);
-      event.target.value = "";
-    }
-  };
-
-  const handleBackgroundToggle = (enabled: boolean) => {
-    setBackgroundEnabled(enabled);
-    localStorage.setItem(BACKGROUND_ENABLED_KEY, String(enabled));
-  };
-
-  const handleBackgroundClear = async () => {
-    setBusyAction("background-clear");
-
-    try {
-      await clearBackgroundAsset();
-      localStorage.removeItem(BACKGROUND_NAME_KEY);
-      localStorage.setItem(BACKGROUND_ENABLED_KEY, "false");
-      setBackgroundEnabled(false);
-      setBackgroundName(null);
-      setBackgroundFromBlob(null);
-      setNotice({
-        tone: "info",
-        message: "背景个性化已清除。"
-      });
-    } catch (error) {
-      setNotice({
-        tone: "error",
-        message: statusMessage(error, "清除背景图失败。")
-      });
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const statusTone = status ? networkTone(status.online) : "warning";
-  const observedEpoch = Number(status?.observed_at);
-  const observedAt = Number.isFinite(observedEpoch) && observedEpoch > 0
-    ? new Date(observedEpoch * 1000).toLocaleString("zh-CN", { hour12: false })
-    : status?.observed_at
-      ? String(status.observed_at)
-      : "时间未知";
-  const statusFreshness = status?.stale ? `状态已过期 · ${observedAt}` : `采集于 ${observedAt}`;
-  const daemonStatusTone = status
-    ? daemonTone(status.daemon_state, status.daemon_running)
-    : "neutral";
-  const healthTone = !health?.supported
-    ? "warning"
-    : health.enabled
-      ? health.collector_active
-        ? "positive"
-        : "info"
-      : "neutral";
-  const activeSectionMeta =
-    SECTION_ITEMS.find((section) => section.id === activeSection) ?? SECTION_ITEMS[0];
-  const recentLogs = [...logs].slice(-4).reverse();
-  const healthUnavailableMessage =
-    health && health.supported === false
-      ? health.message || "主脚本版本过低，需升级后使用"
-      : runtime && runtime.supported === false
-        ? runtime.message || "主脚本版本过低，需升级后使用"
-        : "";
-  const shellStyle =
-    backgroundEnabled && backgroundUrl
-      ? {
-          backgroundImage: `linear-gradient(var(--bg-image-overlay-start), var(--bg-image-overlay-end)), url("${backgroundUrl}")`
-        }
-      : undefined;
-
-  const renderOverview = () => (
-    <div className="page-grid">
-      <div className="metric-grid">
-        <MetricCard
-          eyebrow="网络状态"
-          value={
-            status?.online === true
-              ? "已连接"
-              : status?.online === false
-                ? "未连接"
-                : authPhase === "checking"
-                  ? "检测中"
-                  : "状态未知"
-          }
-          detail={status ? `${operatorLabel(status.operator)} · ${statusFreshness}` : "等待后端状态"}
-          tone={statusTone}
-        />
-        <MetricCard
-          eyebrow="守护进程"
-          value={status?.daemon_running ? "运行中" : "未运行"}
-          detail={status?.daemon_uptime || "—"}
-          tone={daemonStatusTone}
-        />
-        <MetricCard
-          eyebrow="账号摘要"
-          value={status?.username || "未配置"}
-          detail={status ? accountTypeLabel(status.account_type) : "等待加载"}
-          tone="neutral"
-        />
-        <MetricCard
-          eyebrow="健康监听"
-          value={health?.supported === false ? "需升级" : health?.enabled ? "已开启" : "未开启"}
-          detail={healthModeLabel(health)}
-          tone={healthTone}
-        />
-        <MetricCard
-          eyebrow="最近认证"
-          value={status?.last_auth || "—"}
-          detail={`核心版本 ${status?.version || "—"}`}
-          tone="info"
-        />
-      </div>
-
-      {!status?.installed && authPhase === "authenticated" ? (
-        <EmptyState
-          title="未检测到锐捷主脚本"
-          description="面板已启动，但后端主脚本不存在或没有完成安装。先在路由器里安装 ruijie-gdstvc-autologin，再回来刷新面板。"
-        />
-      ) : null}
-
-      <div className="content-grid">
-        <Surface
-          eyebrow="快捷控制"
-          title="即时操作"
-          description="把常用的守护进程控制和运营商切换放在首屏。"
-          actions={
-            <button
-              type="button"
-              className="button button--ghost"
-              disabled={authPhase !== "authenticated"}
-              onClick={() => goToSection("daemon")}
-            >
-              打开守护进程页
-            </button>
-          }
-        >
-          <div className="quick-actions">
-            <button
-              type="button"
-              className="button button--primary"
-              disabled={busyAction === "daemon-start" || authPhase !== "authenticated"}
-              onClick={() => void handleDaemonAction("start")}
-            >
-              启动守护进程
-            </button>
-            <button
-              type="button"
-              className="button button--secondary"
-              disabled={busyAction === "daemon-restart" || authPhase !== "authenticated"}
-              onClick={() => void handleDaemonAction("restart")}
-            >
-              重启守护进程
-            </button>
-            <button
-              type="button"
-              className="button button--danger"
-              disabled={busyAction === "daemon-stop" || authPhase !== "authenticated"}
-              onClick={() => void handleDaemonAction("stop")}
-            >
-              停止守护进程
-            </button>
-          </div>
-
-          <div className="quick-actions">
-            <button
-              type="button"
-              className="button button--secondary"
-              disabled={busyAction === "auth-reauth" || authPhase !== "authenticated"}
-              onClick={() => void handleAuthAction("reauth")}
-            >
-              重新认证
-            </button>
-          </div>
-        </Surface>
-
-        <Surface
-          eyebrow="健康监听"
-          title="调试窗口"
-          description="首次安装后会默认开启 3 天；后续可在守护页重新打开，用来保留认证、网络和运行环境上下文。"
-          actions={
-            <button
-              type="button"
-              className="button button--ghost"
-              disabled={authPhase !== "authenticated"}
-              onClick={() => goToSection("daemon")}
-            >
-              打开健康控制
-            </button>
-          }
-        >
-          {health?.supported === false ? (
-            <EmptyState
-              title="主脚本版本过低"
-              description={healthUnavailableMessage || "升级主脚本后才能使用健康监听。"}
-              compact
-            />
-          ) : (
-            <DefinitionList
-              items={[
-                ["当前状态", health?.enabled ? "已开启" : "未开启"],
-                ["剩余窗口", healthModeLabel(health)],
-                ["采样状态", health?.collector_active ? "守护进程正在采样" : "已开启但未采样"],
-                ["最近事件", health?.last_event_at || "—"]
-              ]}
-            />
-          )}
-        </Surface>
-
-        <Surface
-          eyebrow="健康摘要"
-          title="当前运行面"
-          description="为移动端巡检保留关键信息，不把细节埋得太深。"
-        >
-          <DefinitionList
-            items={[
-              ["运行 PID", status?.daemon_pid || "—"],
-              ["守护状态", status?.daemon_state || "—"],
-              ["账号类型", accountTypeLabel(status?.account_type || accountForm.accountType)],
-              ["当前运营商", operatorLabel(status?.operator || accountForm.operator)]
-            ]}
-          />
-        </Surface>
-      </div>
-
-      <Surface
-        eyebrow="最近事件"
-        title="最新日志预览"
-        description="保留最近几条关键事件，完整筛选和阅读放到日志工作区。"
-        actions={
-          <button type="button" className="button button--ghost" onClick={() => goToSection("logs")}>
-            打开日志中心
-          </button>
-        }
-      >
-        {recentLogs.length > 0 ? (
-          <div className="log-feed">
-            {recentLogs.map((line, index) => (
-              <article key={`${line.ts}-${line.level}-${index}`} className="log-row">
-                <div className={cn("log-badge", `log-badge--${logTone(line.level)}`)}>
-                  {line.level}
-                </div>
-                <div className="log-row__body">
-                  <p>{line.msg}</p>
-                  <span>{line.ts}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="还没有日志"
-            description="如果你刚安装面板或守护进程还没启动，日志区会暂时保持空白。"
-            compact
-          />
-        )}
-      </Surface>
-    </div>
-  );
-
-  const renderAccount = () => (
-    <div className="page-grid">
-      <Surface
-        eyebrow="账号与认证"
-        title="编辑校园网账号"
-        description="保存时会保留已有账号类型，只更新用户名、密码和运营商。"
-      >
-        <form className="form-grid" onSubmit={handleSaveAccount}>
-          <label className="field">
-            <span className="field__label">用户名</span>
-            <input
-              className="input"
-              name="username"
-              value={accountForm.username}
-              onChange={handleAccountInput}
-              placeholder="例如 2023000000"
-              autoComplete="username"
-            />
-          </label>
-
-          <label className="field">
-            <span className="field__label">密码</span>
-            <input
-              className="input"
-              type="password"
-              name="password"
-              value={accountForm.password}
-              onChange={handleAccountInput}
-              placeholder="保存时需要重新输入密码"
-              autoComplete="current-password"
-            />
-          </label>
-
-          <label className="field">
-            <span className="field__label">运营商</span>
-            <select
-              className="input"
-              name="operator"
-              value={accountForm.operator}
-              onChange={handleAccountInput}
-            >
-              <option value="DianXin">校园电信</option>
-              <option value="LianTong">校园联通</option>
-            </select>
-          </label>
-
-          <div className="field">
-            <span className="field__label">账号类型</span>
-            <div className="readonly-card">
-              <strong>{accountTypeLabel(accountForm.accountType)}</strong>
-              <span>由主脚本配置决定，Web 面板只展示不覆盖。</span>
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="submit"
-              className="button button--primary"
-              disabled={busyAction === "account" || authPhase !== "authenticated"}
-            >
-              {busyAction === "account" ? "保存中..." : "保存账号配置"}
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              disabled={authPhase !== "authenticated"}
-              onClick={() => void refreshPanel(false, false)}
-            >
-              从后端重新加载
-            </button>
-          </div>
-        </form>
-      </Surface>
-
-      <div className="content-grid">
-        <Surface
-          eyebrow="当前摘要"
-          title="已生效配置"
-          description="展示当前后端实际读到的账号信息。"
-        >
-          <DefinitionList
-            items={[
-              ["当前用户名", status?.username || accountForm.username || "—"],
-              ["当前运营商", operatorLabel(status?.operator || accountForm.operator)],
-              ["账号类型", accountTypeLabel(status?.account_type || accountForm.accountType)],
-              ["最近认证", status?.last_auth || "—"]
-            ]}
-          />
-        </Surface>
-
-        <Surface
-          eyebrow="应用说明"
-          title="保存与认证分开"
-          description="保存只写入配置。需要切换线路或立即更新校园网会话时，请在守护进程页面执行“重新认证”。"
-        >
-          <p className="surface__body">后台刷新不会覆盖正在编辑的账号或代理字段。</p>
-        </Surface>
-      </div>
-    </div>
-  );
-
-  const renderDaemon = () => (
-    <div className="page-grid">
-      <div className="metric-grid metric-grid--three">
-        <MetricCard
-          eyebrow="运行状态"
-          value={status?.daemon_running ? "在线" : "离线"}
-          detail={status?.daemon_state || "—"}
-          tone={daemonStatusTone}
-        />
-        <MetricCard
-          eyebrow="进程 PID"
-          value={metricValue(status?.daemon_pid)}
-          detail={status?.daemon_running ? "当前活跃进程" : "未运行"}
-          tone="neutral"
-        />
-        <MetricCard
-          eyebrow="累计运行"
-          value={metricValue(status?.daemon_uptime)}
-          detail={status?.last_auth ? `最近认证 ${status.last_auth}` : "等待首次认证"}
-          tone="info"
-        />
-      </div>
-
-      <Surface
-        eyebrow="服务控制"
-        title="守护进程动作"
-        description="停止只暂停自动重连；“断开认证”会让路由器下线。开机自启由系统服务的 enable/disable 单独控制。"
-      >
-        <div className="quick-actions">
-          <button
-            type="button"
-            className="button button--primary"
-            disabled={busyAction === "daemon-start" || authPhase !== "authenticated"}
-            onClick={() => void handleDaemonAction("start")}
-          >
-            启动
-          </button>
-          <button
-            type="button"
-            className="button button--secondary"
-            disabled={busyAction === "daemon-restart" || authPhase !== "authenticated"}
-            onClick={() => void handleDaemonAction("restart")}
-          >
-            重启
-          </button>
-          <button
-            type="button"
-            className="button button--danger"
-            disabled={busyAction === "daemon-stop" || authPhase !== "authenticated"}
-            onClick={() => void handleDaemonAction("stop")}
-          >
-            停止
-          </button>
-          <button
-            type="button"
-            className="button button--secondary"
-            disabled={busyAction === "auth-reauth" || authPhase !== "authenticated"}
-            onClick={() => void handleAuthAction("reauth")}
-          >
-            重新认证
-          </button>
-          <button
-            type="button"
-            className="button button--danger"
-            disabled={busyAction === "auth-logout" || authPhase !== "authenticated"}
-            onClick={() => void handleAuthAction("logout")}
-          >
-            断开认证
-          </button>
-        </div>
-      </Surface>
-
-      <Surface
-        eyebrow="健康监听"
-        title="健康监听控制"
-        description="需要排障或给 agent 更多上下文时，可以临时开启更完整的健康采样。"
-      >
-        {health?.supported === false ? (
-          <EmptyState
-            title="主脚本版本过低"
-            description={healthUnavailableMessage || "升级主脚本后才能启用健康监听。"}
-          />
-        ) : (
-          <>
-            <DefinitionList
-              items={[
-                ["监听状态", health?.enabled ? "已开启" : "未开启"],
-                ["剩余窗口", healthModeLabel(health)],
-                ["采样是否活跃", health?.collector_active ? "活跃" : "等待守护进程运行"],
-                ["脱敏策略", health?.redaction || "mask_password_and_session_only"]
-              ]}
-            />
-            <div className="quick-actions">
-              <button
-                type="button"
-                className="button button--secondary"
-                disabled={busyAction === "health-enable-1d" || authPhase !== "authenticated"}
-                onClick={() => void handleHealthAction("enable", "1d")}
-              >
-                开启 1 天
-              </button>
-              <button
-                type="button"
-                className="button button--primary"
-                disabled={busyAction === "health-enable-3d" || authPhase !== "authenticated"}
-                onClick={() => void handleHealthAction("enable", "3d")}
-              >
-                开启 3 天
-              </button>
-              <button
-                type="button"
-                className="button button--secondary"
-                disabled={busyAction === "health-enable-7d" || authPhase !== "authenticated"}
-                onClick={() => void handleHealthAction("enable", "7d")}
-              >
-                开启 7 天
-              </button>
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={
-                  busyAction === "health-enable-permanent" || authPhase !== "authenticated"
-                }
-                onClick={() => void handleHealthAction("enable", "permanent")}
-              >
-                永久开启
-              </button>
-              <button
-                type="button"
-                className="button button--danger"
-                disabled={busyAction === "health-disable" || authPhase !== "authenticated"}
-                onClick={() => void handleHealthAction("disable")}
-              >
-                关闭监听
-              </button>
-            </div>
-          </>
-        )}
-      </Surface>
-
-      <Surface
-        eyebrow="运行细节"
-        title="状态细节"
-        description="保留实际故障排查需要的 PID、线路与版本信息。"
-      >
-        <DefinitionList
-          items={[
-            ["当前线路", operatorLabel(status?.operator || accountForm.operator)],
-            ["核心版本", status?.version || "—"],
-            ["最近认证", status?.last_auth || "—"],
-            ["账号用户", status?.username || accountForm.username || "—"]
-          ]}
-        />
-      </Surface>
-    </div>
-  );
-
-  const renderLogs = () => (
-    <div className="page-grid">
-      <Surface
-        eyebrow="日志中心"
-        title="筛选与回看"
-        description="认证日志和健康日志共用一套阅读面，切换来源后保留同样的筛选节奏。"
-        actions={
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={autoRefreshLogs}
-              onChange={(event) => setAutoRefreshLogs(event.target.checked)}
-            />
-            <span>自动刷新</span>
-          </label>
-        }
-      >
-        <div className="toolbar">
-          <div className="toolbar__group toolbar__group--wrap">
-            <button
-              type="button"
-              className={cn("filter-chip", logSource === "daemon" && "filter-chip--active")}
-              onClick={() => setLogSource("daemon")}
-            >
-              认证日志
-            </button>
-            <button
-              type="button"
-              className={cn("filter-chip", logSource === "health" && "filter-chip--active")}
-              onClick={() => setLogSource("health")}
-            >
-              健康日志
-            </button>
-          </div>
-
-          <div className="toolbar__group toolbar__group--wrap">
-            {LOG_LEVEL_OPTIONS.map((option) => (
-              <button
-                key={option.value || "all"}
-                type="button"
-                className={cn("filter-chip", logLevel === option.value && "filter-chip--active")}
-                onClick={() => setLogLevel(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
-          {logSource === "health" ? (
-            <div className="toolbar__group toolbar__group--wrap">
-              {HEALTH_LOG_TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option.value || "all-health-types"}
-                  type="button"
-                  className={cn(
-                    "filter-chip",
-                    healthLogType === option.value && "filter-chip--active"
-                  )}
-                  onClick={() => setHealthLogType(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="toolbar__group">
-            <label className="field field--inline">
-              <span className="field__label">行数</span>
-              <select
-                className="input input--compact"
-                value={logLimit}
-                onChange={(event) => setLogLimit(Number(event.target.value))}
-              >
-                {LOG_LIMIT_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="button button--secondary"
-              disabled={isLogsLoading || authPhase !== "authenticated"}
-              onClick={() => void refreshLogs(false)}
-            >
-              {isLogsLoading ? "读取中..." : "刷新日志"}
-            </button>
-          </div>
-        </div>
-
-        <div className="logs-headline">
-          <span>
-            {logSource === "health" ? "健康日志" : "认证日志"}，返回 {logTotal} 条记录
-          </span>
-          <span>{autoRefreshLogs ? "已开启自动刷新" : "手动刷新模式"}</span>
-        </div>
-
-        {logs.length > 0 ? (
-          <div className="log-table" role="list" aria-label="日志列表">
-            {logs.map((line, index) => (
-              <article
-                key={`${line.ts}-${line.level}-${index}`}
-                className="log-table__row"
-                role="listitem"
-              >
-                <div className="log-table__meta">
-                  <span className={cn("log-badge", `log-badge--${logTone(line.level)}`)}>
-                    {line.type ? `${line.level} · ${line.type}` : line.level}
-                  </span>
-                  <time>{line.ts}</time>
-                </div>
-                <p className="log-table__message">{line.msg}</p>
-                {line.details ? <p className="surface__body">{line.details}</p> : null}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="没有匹配日志"
-            description={
-              logSource === "health"
-                ? "尝试切换类型筛选，或先开启健康监听生成新的调试上下文。"
-                : "尝试切换筛选级别，或先启动守护进程生成新的日志。"
-            }
-          />
-        )}
-      </Surface>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className="page-grid">
-      <div className="content-grid">
-        <Surface
-          eyebrow="主题"
-          title="界面观感"
-          description="深色是默认首选，亮色作为完整等价方案保留。"
-        >
-          <div className="theme-cards">
-            <button
-              type="button"
-              className={cn("theme-card", theme === "dark" && "theme-card--active")}
-              onClick={() => setTheme("dark")}
-            >
-              <span className="theme-card__preview theme-card__preview--dark" />
-              <strong>深色控制台</strong>
-              <span>默认石墨主题，适合夜间和移动端巡检。</span>
-            </button>
-            <button
-              type="button"
-              className={cn("theme-card", theme === "light" && "theme-card--active")}
-              onClick={() => setTheme("light")}
-            >
-              <span className="theme-card__preview theme-card__preview--light" />
-              <strong>亮色工作台</strong>
-              <span>在强光环境下保持更高可读性。</span>
-            </button>
-          </div>
-        </Surface>
-
-        <Surface
-          eyebrow="关于"
-          title="版本与链接"
-          description="保留当前核心版本感知，把上游更新入口收敛为手动查看。"
-        >
-          <DefinitionList
-            items={[
-              ["面板工作区", "React + Vite + TypeScript"],
-              ["当前核心版本", status?.version || "—"],
-              [
-                "上游发布页",
-                <a
-                  key="core-releases"
-                  className="inline-link"
-                  href="https://github.com/huantuoshen-prog/ruijie-gdstvc-autologin/releases"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  查看主仓库 Releases
-                </a>
-              ],
-              ["接口入口", "/ruijie-cgi/<name>"]
-            ]}
-          />
-        </Surface>
-
-        <Surface
-          eyebrow="运行环境"
-          title="运行环境"
-          description="直接暴露给排障和 agent 的环境摘要，方便判断当前路由器是否具备采样与守护能力。"
-        >
-          {runtime?.supported === false ? (
-            <EmptyState
-              title="主脚本版本过低"
-              description={healthUnavailableMessage || "升级主脚本后才能读取运行环境摘要。"}
-              compact
-            />
-          ) : (
-            <DefinitionList
-              items={[
-                ["平台", runtime?.platform || "—"],
-                ["内核", runtime?.kernel || "—"],
-                ["架构", runtime?.arch || "—"],
-                ["Shell", runtime?.shell || "—"],
-                ["服务管理", runtime?.procd_present ? "procd 可用" : "procd 不可用"],
-                ["脚本目录", runtime?.script_dir || "—"],
-                ["配置路径", runtime?.config_file || "—"],
-                ["健康日志", runtime?.health_logfile || "—"]
-              ]}
-            />
-          )}
-        </Surface>
-      </div>
-
-      <Surface
-        eyebrow="代理设置"
-        title="网络出口"
-        description="与后端 `/settings` 接口保持兼容，不改变原有字段语义。"
-      >
-        <form className="form-grid" onSubmit={handleSaveSettings}>
-          <label className="field">
-            <span className="field__label">HTTP 代理</span>
-            <input
-              className="input"
-              name="proxyUrl"
-              value={settingsForm.proxyUrl}
-              onChange={handleSettingsInput}
-              placeholder="http://127.0.0.1:7890"
-            />
-          </label>
-
-          <label className="field">
-            <span className="field__label">HTTPS 代理</span>
-            <input
-              className="input"
-              name="proxyUrlHttps"
-              value={settingsForm.proxyUrlHttps}
-              onChange={handleSettingsInput}
-              placeholder="http://127.0.0.1:7890"
-            />
-          </label>
-
-          <div className="form-actions">
-            <button
-              type="submit"
-              className="button button--primary"
-              disabled={busyAction === "settings" || authPhase !== "authenticated"}
-            >
-              {busyAction === "settings" ? "保存中..." : "保存代理配置"}
-            </button>
-          </div>
-        </form>
-      </Surface>
-
-      <Surface
-        eyebrow="个性化"
-        title="背景定制"
-        description="背景图被降为次级能力，默认不会主导界面；启用后会自动增加遮罩。"
-        actions={
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setPersonalizationOpen((current) => !current)}
-          >
-            {personalizationOpen ? "收起" : "展开"}
-          </button>
-        }
-      >
-        {personalizationOpen ? (
-          <div className="personalization-panel">
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={backgroundEnabled}
-                onChange={(event) => handleBackgroundToggle(event.target.checked)}
-              />
-              <span>启用背景图</span>
-            </label>
-
-            <div className="readonly-card">
-              <strong>{backgroundName || "未设置背景图"}</strong>
-              <span>个性化只影响表面氛围，不改变内容层级和可读性。</span>
-            </div>
-
-            <div className="quick-actions">
-              <label className="button button--secondary button--file">
-                <input type="file" accept="image/*" onChange={handleBackgroundUpload} hidden />
-                {busyAction === "background" ? "上传中..." : "上传背景图"}
-              </label>
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={!backgroundUrl}
-                onClick={() => handleBackgroundToggle(!backgroundEnabled)}
-              >
-                {backgroundEnabled ? "临时关闭背景" : "重新启用背景"}
-              </button>
-              <button
-                type="button"
-                className="button button--danger"
-                disabled={!backgroundUrl || busyAction === "background-clear"}
-                onClick={() => void handleBackgroundClear()}
-              >
-                {busyAction === "background-clear" ? "清除中..." : "删除背景图"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="surface__body">默认保持关闭，只在你确实需要更强的个性化时再展开。</p>
-        )}
-      </Surface>
-    </div>
-  );
-
-  const sectionContent =
-    activeSection === "overview"
-      ? renderOverview()
-      : activeSection === "account"
-        ? renderAccount()
-        : activeSection === "daemon"
-          ? renderDaemon()
-          : activeSection === "logs"
-            ? renderLogs()
-            : renderSettings();
+    if (!notice || notice.tone === "error") return;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice, setNotice]);
+
+  if (p.authPhase === "checking") {
+    return <main className="login"><p className="muted">正在连接路由器…</p></main>;
+  }
+  if (p.authPhase === "unauthenticated") {
+    return <Login p={p} />;
+  }
+
+  const current = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   return (
-    <div className="app-shell">
-      <div className="app-shell__backdrop" style={shellStyle} aria-hidden="true" />
-      <div className="app-frame">
-        <aside className="sidebar">
-          <div className="sidebar__brand">
-            <div className="brand-mark" aria-hidden="true">
-              <span />
-            </div>
-            <div>
-              <p className="brand-kicker">Ruijie Panel</p>
-              <h1>锐捷 Web 管理面板</h1>
-            </div>
-          </div>
+    <div className="app">
+      <header className="top">
+        <div className="brand">
+          <span className={cn("brand__mark", p.status?.online === true && "is-live")} aria-hidden="true" />
+          <strong>RUIJIE</strong>
+          <span className="brand__sub">校园网认证</span>
+        </div>
+        <nav className="tabs" aria-label="页面">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={cn(tab === t.id && "is-on")}
+              aria-current={tab === t.id ? "page" : undefined}
+              onClick={() => startTransition(() => setTab(t.id))}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <Btn busy={p.refreshing} onClick={() => void p.refresh()}>
+          {p.refreshing ? "刷新中" : "刷新"}
+        </Btn>
+      </header>
 
-          <div className="sidebar__stack">
-            <div className="surface surface--muted">
-              <p className="surface__eyebrow">部署形态</p>
-              <p className="surface__body">
-                面向 OpenWrt / iStoreOS 的单页运维控制台，默认深色主题，支持移动端巡检。
-              </p>
-            </div>
-
-            <nav className="nav-list" aria-label="主导航">
-              {SECTION_ITEMS.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  className={cn("nav-item", activeSection === section.id && "nav-item--active")}
-                  aria-current={activeSection === section.id ? "page" : undefined}
-                  onClick={() => goToSection(section.id)}
-                >
-                  <span className="nav-item__icon">
-                    <Icon section={section.id} />
-                  </span>
-                  <span className="nav-item__content">
-                    <span className="nav-item__label">{section.label}</span>
-                    <span className="nav-item__meta">{section.description}</span>
-                  </span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="sidebar__footer">
-            <div className="surface surface--muted">
-              <p className="surface__eyebrow">当前主题</p>
-              <div className="theme-toggle">
-                <button
-                  type="button"
-                  className={cn("theme-toggle__button", theme === "dark" && "is-active")}
-                  onClick={() => setTheme("dark")}
-                >
-                  深色
-                </button>
-                <button
-                  type="button"
-                  className={cn("theme-toggle__button", theme === "light" && "is-active")}
-                  onClick={() => setTheme("light")}
-                >
-                  亮色
-                </button>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="workspace">
-          <header className="workspace__header">
-            <div>
-              <p className="workspace__eyebrow">Professional Network Console</p>
-              <h2>{activeSectionMeta.label}</h2>
-              <p className="workspace__subtitle">{activeSectionMeta.description}</p>
-            </div>
-
-            <div className="workspace__actions">
-              <button
-                type="button"
-                className="button button--secondary"
-                disabled={isRefreshing || authPhase !== "authenticated"}
-                onClick={() => void refreshPanel(true, false)}
-              >
-                {isRefreshing ? "同步中..." : "刷新面板"}
-              </button>
-              <button
-                type="button"
-                className="button button--ghost"
-                disabled={busyAction === "logout" || authPhase !== "authenticated"}
-                onClick={() => void handleLogout()}
-              >
-                {busyAction === "logout" ? "退出中..." : "退出登录"}
-              </button>
-            </div>
-          </header>
-
-          {notice ? (
-            <div className={cn("notice", `notice--${notice.tone}`)}>
-              <span>{notice.message}</span>
-              <button type="button" className="notice__dismiss" onClick={() => setNotice(null)}>
-                关闭
-              </button>
-            </div>
-          ) : null}
-
-          {status?.message ? (
-            <div className="notice notice--warning">
-              <span>{status.message}</span>
-            </div>
-          ) : null}
-
-          {healthUnavailableMessage ? (
-            <div className="notice notice--warning">
-              <span>{healthUnavailableMessage}</span>
-            </div>
-          ) : null}
-
-          <section className="workspace__section">{sectionContent}</section>
-        </main>
-      </div>
-
-      <nav className="mobile-nav" aria-label="移动端导航">
-        {SECTION_ITEMS.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            className={cn("mobile-nav__item", activeSection === section.id && "is-active")}
-            onClick={() => goToSection(section.id)}
-          >
-            <span className="mobile-nav__icon">
-              <Icon section={section.id} />
-            </span>
-            <span>{section.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      {authPhase !== "authenticated" ? (
-        <div className="auth-layer" role="dialog" aria-modal="true" aria-labelledby="login-title">
-          <div className="auth-card">
-            <div className="auth-card__header">
-              <p className="surface__eyebrow">Web 面板访问保护</p>
-              <h2 id="login-title">
-                {authPhase === "checking" ? "正在检查登录状态" : "输入面板密码"}
-              </h2>
-              <p className="surface__body">
-                面板已默认加上独立访问保护；同一局域网里的其他设备不能再直接裸用管理接口。
-              </p>
-            </div>
-
-            {authPhase === "checking" ? (
-              <div className="auth-card__pending">正在与 CGI 接口同步当前会话...</div>
-            ) : (
-              <form className="auth-form" onSubmit={handleLogin}>
-                <label className="field">
-                  <span className="field__label">面板密码</span>
-                  <input
-                    className="input"
-                    type="password"
-                    value={loginPassword}
-                    onChange={(event) => setLoginPassword(event.target.value)}
-                    placeholder="请输入安装脚本初始化的 Web 面板密码"
-                    autoFocus
-                    autoComplete="current-password"
-                  />
-                </label>
-
-                {loginError ? <p className="field__error">{loginError}</p> : null}
-
-                <button
-                  type="submit"
-                  className="button button--primary button--full"
-                  disabled={busyAction === "login"}
-                >
-                  {busyAction === "login" ? "登录中..." : "进入控制台"}
-                </button>
-              </form>
-            )}
-          </div>
+      {notice ? (
+        <div className={cn("notice", `notice--${notice.tone}`)} role="status">
+          <span>{notice.message}</span>
+          <button type="button" aria-label="关闭提示" onClick={() => setNotice(null)}>×</button>
         </div>
       ) : null}
+
+      <main className="page">
+        <h2 className="sr-only">{current.label}</h2>
+        {tab === "status" && <StatusPage p={p} />}
+        {tab === "account" && <AccountPage p={p} />}
+        {tab === "logs" && <LogsPage p={p} />}
+        {tab === "system" && <SystemPage p={p} theme={theme} setTheme={setTheme} />}
+      </main>
     </div>
   );
 }
