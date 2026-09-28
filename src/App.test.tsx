@@ -126,11 +126,11 @@ describe("App bootstrap", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: "总览", level: 2 });
+    await screen.findByRole("heading", { name: "状态", level: 2 });
 
-    fireEvent.click(screen.getByRole("button", { name: "设置 代理、主题与个性化" }));
+    fireEvent.click(screen.getByRole("button", { name: "系统" }));
 
-    await screen.findByRole("heading", { name: "设置", level: 2 });
+    await screen.findByRole("heading", { name: "系统", level: 2 });
 
     const externalCalls = fetchMock.mock.calls.filter(([input]) =>
       String(input).includes("api.github.com")

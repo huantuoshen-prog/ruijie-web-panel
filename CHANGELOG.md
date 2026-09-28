@@ -1,5 +1,16 @@
 # Changelog - Ruijie Web Panel
 
+## Unreleased
+
+### Changed
+- 前端界面重做：状态 / 账号 / 日志 / 系统四个标签页，替换原侧边栏布局
+- 首页新增「守护进程 → 锐捷认证 → 互联网」连接链路和最近事件色条
+- 状态与接口逻辑抽到 `src/lib/usePanel.ts`，`App.tsx` 只负责展示
+- 默认浅色主题，保留深色主题
+
+### Removed
+- 自定义背景图功能
+
 ## v4.0.0 (2026-09-16)
 
 ### Added

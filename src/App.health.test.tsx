@@ -122,20 +122,20 @@ describe("App health monitor surfaces", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: "总览", level: 2 });
+    await screen.findByRole("heading", { name: "状态", level: 2 });
     expect(screen.getAllByText(/健康监听/i).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "守护进程 服务控制与运行指标" }));
-    await screen.findByRole("heading", { name: "守护进程", level: 2 });
-    expect(screen.getByRole("button", { name: "开启 3 天" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "永久开启" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "状态" }));
+    await screen.findByRole("heading", { name: "状态", level: 2 });
+    expect(screen.getByRole("button", { name: "3 天" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "永久" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "日志 实时事件与筛选" }));
+    fireEvent.click(screen.getByRole("button", { name: "日志" }));
     await screen.findByRole("heading", { name: "日志", level: 2 });
     expect(screen.getByRole("button", { name: "健康日志" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "设置 代理、主题与个性化" }));
-    await screen.findByRole("heading", { name: "设置", level: 2 });
+    fireEvent.click(screen.getByRole("button", { name: "系统" }));
+    await screen.findByRole("heading", { name: "系统", level: 2 });
     expect(screen.getAllByText("运行环境").length).toBeGreaterThan(0);
     expect(screen.getByText("openwrt")).toBeInTheDocument();
   });
@@ -215,7 +215,7 @@ describe("App health monitor surfaces", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: "总览", level: 2 });
+    await screen.findByRole("heading", { name: "状态", level: 2 });
     expect(screen.getAllByText("主脚本版本过低，需升级后使用").length).toBeGreaterThan(0);
   });
 });
