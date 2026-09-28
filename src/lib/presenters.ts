@@ -7,6 +7,10 @@ export function operatorLabel(operator: string): string {
     return "校园联通";
   }
 
+  if (operator === "default") {
+    return "默认线路";
+  }
+
   return operator || "未设置";
 }
 

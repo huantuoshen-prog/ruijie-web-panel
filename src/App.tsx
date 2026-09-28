@@ -61,6 +61,20 @@ function healthLabel(health: HealthStatusResponse | null): string {
   return `剩余 ${remaining(health.remaining_seconds)}`;
 }
 
+// 与核心 lib/daemon.sh 写入 /var/run/ruijie-daemon.state 的取值对应
+const DAEMON_STATES: Record<string, string> = {
+  ONLINE: "在线",
+  CHECKING: "检测中",
+  RETRYING: "重试中",
+  WAIT_LONG: "等待重试"
+};
+
+function daemonStateLabel(state: string | undefined, running: boolean | undefined): string {
+  if (!running) return "已停止";
+  if (!state) return "运行中";
+  return DAEMON_STATES[state] ?? state;
+}
+
 function formatTime(value?: string | number): string {
   const epoch = Number(value);
   if (Number.isFinite(epoch) && epoch > 1e9) {
@@ -164,9 +178,9 @@ function StatusPage({ p }: { p: Panel }) {
         </div>
 
         <div className="chain" aria-label="连接链路">
-          <Node label="守护进程" value={s?.daemon_running ? s.daemon_state || "运行中" : "已停止"} tone={daemonTone} />
+          <Node label="守护进程" value={daemonStateLabel(s?.daemon_state, s?.daemon_running)} tone={daemonTone} />
           <span className={cn("chain__wire", `is-${daemonTone === "ok" ? authTone : "off"}`)} />
-          <Node label="锐捷认证" value={s?.last_auth ? s.last_auth.slice(5, 16) : "—"} tone={authTone} />
+          <Node label="锐捷认证" value={s?.last_auth ? s.last_auth.slice(5, 16) : online === true ? "已通过" : s?.daemon_running ? "等待中" : "—"} tone={authTone} />
           <span className={cn("chain__wire", `is-${netTone}`)} />
           <Node label="互联网" value={online === true ? "可达" : online === false ? "不可达" : "未知"} tone={netTone} />
         </div>
@@ -313,24 +327,28 @@ function AccountPage({ p }: { p: Panel }) {
               onChange={(e) => p.editAccount({ password: e.target.value })}
             />
           </label>
-          <fieldset className="seg">
-            <legend>运营商</legend>
-            {[
-              ["DianXin", "校园电信"],
-              ["LianTong", "校园联通"]
-            ].map(([value, label]) => (
-              <label key={value} className={cn(p.account.operator === value && "is-on")}>
-                <input
-                  type="radio"
-                  name="operator"
-                  value={value}
-                  checked={p.account.operator === value}
-                  onChange={() => p.editAccount({ operator: value })}
-                />
-                {label}
-              </label>
-            ))}
-          </fieldset>
+          {p.account.accountType === "teacher" ? (
+            <p className="muted small">运营商：{operatorLabel(p.account.operator)}（教师账号由核心配置决定）</p>
+          ) : (
+            <fieldset className="seg">
+              <legend>运营商</legend>
+              {[
+                ["DianXin", "校园电信"],
+                ["LianTong", "校园联通"]
+              ].map(([value, label]) => (
+                <label key={value} className={cn(p.account.operator === value && "is-on")}>
+                  <input
+                    type="radio"
+                    name="operator"
+                    value={value}
+                    checked={p.account.operator === value}
+                    onChange={() => p.editAccount({ operator: value })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+          )}
           <p className="muted small">账号类型：{accountTypeLabel(p.account.accountType)}</p>
           <div className="actions">
             <Btn type="submit" kind="primary" busy={p.busy === "account"}>保存账号配置</Btn>
